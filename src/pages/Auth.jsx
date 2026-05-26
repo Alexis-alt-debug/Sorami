@@ -89,71 +89,28 @@ export default function Auth() {
       <div style={{ position: 'absolute', bottom: 20, left: 20, fontSize: 22, opacity: 0.10, pointerEvents: 'none', userSelect: 'none' }}>🗺️</div>
       <div style={{ position: 'absolute', bottom: 20, right: 20, fontSize: 22, opacity: 0.10, pointerEvents: 'none', userSelect: 'none' }}>📮</div>
 
-      {/* ── Subtle postmark circle (decorative) ── */}
-      <div style={{
-        position: 'absolute', top: '8%', right: '5%',
-        width: 90, height: 90, borderRadius: '50%',
-        border: `2px dashed ${T.border}`,
-        opacity: 0.35, pointerEvents: 'none',
-      }} />
-      <div style={{
-        position: 'absolute', bottom: '12%', left: '4%',
-        width: 60, height: 60, borderRadius: '50%',
-        border: `2px dashed ${T.border}`,
-        opacity: 0.25, pointerEvents: 'none',
-      }} />
-
       {/* ── Logo ── */}
       <div style={{ textAlign: 'center', marginBottom: 20, position: 'relative', zIndex: 1 }}>
         <div style={{ width: 140, height: 140, margin: '0 auto 12px', position: 'relative' }}>
-          {/* Stamp-style ring */}
-          <div style={{
-            position: 'absolute', inset: -10,
-            borderRadius: '50%',
-            border: `3px dashed ${T.border}`,
-            opacity: 0.6,
-            pointerEvents: 'none',
-          }} />
           <img
             src="/logo.png"
             alt="Sorami"
             style={{
               width: '100%', height: '100%',
               objectFit: 'contain', position: 'relative', zIndex: 1,
-              filter: 'drop-shadow(0 2px 8px rgba(123,110,176,0.25))',
+              filter: 'drop-shadow(0 4px 16px rgba(196,146,42,0.30))',
             }}
           />
         </div>
         <h1 style={{
           fontFamily: "'Playfair Display', Georgia, serif",
-          fontSize: 30, fontWeight: 700, color: T.text,
-          margin: '0 0 4px', letterSpacing: '0.02em',
+          fontSize: 42, fontWeight: 700, color: '#8B4513',
+          margin: '0', letterSpacing: '0.06em',
+          textShadow: '0 2px 8px rgba(139,69,19,0.15)',
+          fontStyle: 'italic',
         }}>
           Sorami
         </h1>
-        <p style={{
-          color: T.text3, fontSize: 12,
-          letterSpacing: '0.14em', textTransform: 'uppercase',
-          fontFamily: "'Crimson Text', Georgia, serif",
-          margin: 0,
-        }}>
-          Your journey, your story
-        </p>
-      </div>
-
-      {/* ── Feature pills ── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-        {['🌍 3D Globe', '📖 Travel Diary', '⭐ Bucket List'].map(f => (
-          <span key={f} style={{
-            fontSize: 11, padding: '5px 12px', borderRadius: 20,
-            background: `${T.purple}12`,
-            border: `1.5px solid ${T.purple}30`,
-            color: T.text2,
-            fontFamily: "'Crimson Text', Georgia, serif",
-          }}>
-            {f}
-          </span>
-        ))}
       </div>
 
       {/* ── Form card ── */}
