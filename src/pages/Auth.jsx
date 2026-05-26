@@ -91,26 +91,28 @@ export default function Auth() {
 
       {/* ── Logo ── */}
       <div style={{ textAlign: 'center', marginBottom: 20, position: 'relative', zIndex: 1 }}>
-        <div style={{ width: 140, height: 140, margin: '0 auto 12px', position: 'relative' }}>
+        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch' }}>
           <img
             src="/logo.png"
             alt="Sorami"
             style={{
-              width: '100%', height: '100%',
-              objectFit: 'contain', position: 'relative', zIndex: 1,
+              width: '100%', height: 'auto',
+              objectFit: 'contain',
               filter: 'drop-shadow(0 4px 16px rgba(196,146,42,0.30))',
+              marginBottom: 8,
             }}
           />
+          <h1 style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: 42, fontWeight: 700, color: '#8B4513',
+            margin: '0', letterSpacing: '0.06em',
+            textShadow: '0 2px 8px rgba(139,69,19,0.15)',
+            fontStyle: 'italic',
+            whiteSpace: 'nowrap',
+          }}>
+            Sorami
+          </h1>
         </div>
-        <h1 style={{
-          fontFamily: "'Playfair Display', Georgia, serif",
-          fontSize: 42, fontWeight: 700, color: '#8B4513',
-          margin: '0', letterSpacing: '0.06em',
-          textShadow: '0 2px 8px rgba(139,69,19,0.15)',
-          fontStyle: 'italic',
-        }}>
-          Sorami
-        </h1>
       </div>
 
       {/* ── Form card ── */}
