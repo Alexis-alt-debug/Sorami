@@ -42,13 +42,13 @@ export default function GlobeView({ onCountryClick, size }) {
   );
 
   const getCapColor = useCallback((feat) => {
-    if (feat === hovered) return 'rgba(6,182,212,0.9)';
+    if (feat === hovered) return 'rgba(196,146,42,0.88)';
     return getCountryColor(String(feat.id));
   }, [hovered, getCountryColor]);
 
   const getLabel = useCallback((feat) => {
     const info = getCountryInfo(feat.id);
-    return `<div style="background:rgba(15,23,42,0.95);color:#e2e8f0;padding:5px 10px;border-radius:8px;font-size:13px;font-family:system-ui;border:1px solid #334155;pointer-events:none">${info.name}</div>`;
+    return `<div style="background:rgba(250,246,239,0.97);color:#2c1a0e;padding:5px 12px;border-radius:8px;font-size:13px;font-family:'Crimson Text',Georgia,serif;border:1.5px solid #d4c4a8;box-shadow:0 2px 8px rgba(44,26,14,0.12);pointer-events:none">${info.name}</div>`;
   }, []);
 
   const handleHover = useCallback((feat) => {
@@ -66,10 +66,11 @@ export default function GlobeView({ onCountryClick, size }) {
 
   if (!GlobeComponent) {
     return (
-      <div className="flex items-center justify-center w-full h-full">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-violet-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-          <p className="text-slate-500 text-xs">Loading globe...</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: 32, height: 32, border: '3px solid rgba(123,110,176,0.3)', borderTopColor: '#7b6eb0', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 8px' }} />
+          <p style={{ color: '#a89070', fontSize: 12, margin: 0 }}>Loading globe…</p>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       </div>
     );
@@ -81,14 +82,14 @@ export default function GlobeView({ onCountryClick, size }) {
       width={size}
       height={size}
       backgroundColor="rgba(0,0,0,0)"
-      globeImageUrl="//unpkg.com/three-globe/example/img/earth-dark.jpg"
-      atmosphereColor="rgba(6,182,212,0.25)"
-      atmosphereAltitude={0.15}
+      globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+      atmosphereColor="rgba(180,160,220,0.5)"
+      atmosphereAltitude={0.18}
       polygonsData={polygonsData}
       polygonAltitude={d => d === hovered ? 0.08 : 0.03}
       polygonCapColor={getCapColor}
-      polygonSideColor={() => 'rgba(6,182,212,0.08)'}
-      polygonStrokeColor={() => 'rgba(255,255,255,0.12)'}
+      polygonSideColor={() => 'rgba(123,110,176,0.15)'}
+      polygonStrokeColor={() => 'rgba(255,255,255,0.18)'}
       polygonLabel={getLabel}
       onPolygonHover={handleHover}
       onPolygonClick={handleClick}

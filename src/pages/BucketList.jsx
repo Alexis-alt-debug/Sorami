@@ -1,13 +1,28 @@
-﻿import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, X, Search, MapPin, Pencil } from 'lucide-react';
+import { IcoPlus, IcoX, IcoSearch, IcoMapPin, IcoPencil, IcoCheck, IcoStar, IcoPlane, IcoBook } from '../components/VintageIcons';
 import { useTravel } from '../context/TravelContext';
-import { getCountryInfo, getFlagEmoji, COUNTRY_NAMES } from '../data/countryNames';
+import { getCountryInfo, COUNTRY_NAMES } from '../data/countryNames';
+import FlagImg from '../components/FlagImg';
 
 const STATUS_LABELS = {
   visited:    'Visited',
   bucketList: 'Bucket List',
   current:    'Traveling',
+};
+
+// ── Design tokens ──────────────────────────────────────────────────────────────
+const T = {
+  bg:     '#f0e8d8',
+  card:   '#faf6ef',
+  border: '#d4c4a8',
+  text:   '#2c1a0e',
+  text2:  '#7a6048',
+  text3:  '#a89070',
+  rose:   '#c4809a',
+  navy:   '#6b7cb5',
+  gold:   '#c4922a',
+  purple: '#7b6eb0',
 };
 
 export default function BucketList() {
@@ -16,14 +31,14 @@ export default function BucketList() {
 
   const [showAdd, setShowAdd]       = useState(false);
   const [addSearch, setAddSearch]   = useState('');
-  const [addCountry, setAddCountry] = useState(null);   // { id, name, alpha2 }
+  const [addCountry, setAddCountry] = useState(null);
   const [addStatus, setAddStatus]   = useState('bucketList');
 
   // ── Dream Notes state ────────────────────────────────────────────────────────
-  const [noteValues,  setNoteValues]  = useState({});   // code → local string
-  const [noteSavedId, setNoteSavedId] = useState(null); // code that just saved
+  const [noteValues,  setNoteValues]  = useState({});
+  const [noteSavedId, setNoteSavedId] = useState(null);
   const noteTimers = useRef({});
-  const [expandedNotes, setExpandedNotes] = useState(new Set()); // codes with textarea open
+  const [expandedNotes, setExpandedNotes] = useState(new Set());
 
   const toggleNote = useCallback((code) => {
     setExpandedNotes(prev => {
@@ -97,60 +112,57 @@ export default function BucketList() {
 
   // ── UI ─────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen pb-8">
+    <div style={{ minHeight: '100vh', background: T.bg, paddingBottom: 32 }}>
 
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: T.card, borderBottom: `2px solid ${T.border}`, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(44,26,14,0.06)' }}>
         <div>
-          <h1 className="text-white font-bold text-lg">My Travel List</h1>
-          <p className="text-slate-400 text-xs">{totalTracked} countr{totalTracked === 1 ? 'y' : 'ies'} tracked</p>
+          <h1 style={{ color: T.text, fontWeight: 700, fontSize: 18, margin: 0, fontFamily: "'Playfair Display', Georgia, serif" }}>
+            My Travel List
+          </h1>
+          <p style={{ color: T.text3, fontSize: 11, margin: '2px 0 0' }}>{totalTracked} countr{totalTracked === 1 ? 'y' : 'ies'} tracked</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={() => navigate('/map')}
-            className="flex items-center gap-1.5 text-xs bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-xl hover:border-slate-500 transition-colors"
+            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, background: 'none', border: `1.5px solid ${T.border}`, color: T.text2, padding: '6px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: "'Crimson Text', Georgia, serif" }}
           >
-            <MapPin className="w-3.5 h-3.5" /> Map
+            <IcoMapPin size={13} color={T.text2} /> Map
           </button>
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 text-xs bg-violet-500 hover:bg-violet-400 text-white font-semibold px-3 py-2 rounded-xl transition-colors"
+            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, background: T.purple, border: 'none', color: '#fff', fontWeight: 600, padding: '6px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: "'Crimson Text', Georgia, serif" }}
           >
-            <Plus className="w-3.5 h-3.5" /> Add
+            <IcoPlus size={13} color="#fff" /> Add
           </button>
         </div>
       </div>
 
-      <div className="p-4 space-y-6">
+      <div style={{ padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-        {/* ── Summary tiles ─────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-2">
+        {/* ── Summary tiles ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
           {[
-            { key: 'visited',    emoji: '✅', label: 'Visited' },
-            { key: 'bucketList', emoji: '⭐', label: 'Bucket List' },
-            { key: 'current',    emoji: '✈️',  label: 'Traveling' },
-          ].map(({ key, emoji, label }) => (
-            <div
-              key={key}
-              className="rounded-2xl p-3 border text-center"
-              style={{ background: statusColors[key] + '12', borderColor: statusColors[key] + '40' }}
-            >
-              <div className="text-xl mb-1">{emoji}</div>
-              <div className="text-2xl font-bold text-white leading-none">{groups[key].length}</div>
-              <div className="text-[11px] mt-1 font-medium" style={{ color: statusColors[key] }}>{label}</div>
+            { key: 'visited',    icon: <IcoCheck size={18} color={T.rose} />, label: 'Visited',     color: T.rose  },
+            { key: 'bucketList', icon: <IcoStar  size={18} color={T.navy} />, label: 'Bucket List', color: T.navy  },
+            { key: 'current',    icon: <IcoPlane size={18} color={T.gold} />, label: 'Traveling',   color: T.gold  },
+          ].map(({ key, icon, label, color }) => (
+            <div key={key} style={{ background: T.card, border: `2px dashed ${color}60`, borderRadius: 14, padding: '10px 6px', textAlign: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>{icon}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: T.text, fontFamily: "'Playfair Display', Georgia, serif", lineHeight: 1 }}>{groups[key].length}</div>
+              <div style={{ fontSize: 10, marginTop: 3, fontWeight: 600, color }}>{label}</div>
             </div>
           ))}
         </div>
 
-        {/* ── Traveling ──────────────────────────────────────────────────────────── */}
+        {/* ── Traveling ── */}
         {groups.current.length > 0 && (
-          <Section title="Traveling" color={statusColors.current} count={groups.current.length}>
+          <Section title="Traveling" color={T.gold} count={groups.current.length}>
             {groups.current.map(({ code, name, alpha2 }) => (
               <CountryRow
                 key={code}
                 code={code} name={name} alpha2={alpha2}
-                currentStatus="current"
-                statusColors={statusColors}
+                color={T.gold}
                 onEdit={() => openEditFor({ id: code, name, alpha2 }, 'current')}
                 onRemove={() => setCountryStatus(code, null)}
               />
@@ -158,86 +170,89 @@ export default function BucketList() {
           </Section>
         )}
 
-        {/* ── Bucket List (with Dream Notes) ─────────────────────────────────────── */}
+        {/* ── Bucket List (with Dream Notes) ── */}
         <Section
           title="Bucket List"
-          color={statusColors.bucketList}
+          color={T.navy}
           count={groups.bucketList.length}
           emptyText="No countries yet — tap Add or mark countries on the Map."
         >
           {groups.bucketList.map(({ code, name, alpha2, note }) => {
-            const localVal     = noteValues[code] !== undefined ? noteValues[code] : note;
-            const hasNote      = !!localVal.trim();
-            const isExpanded   = expandedNotes.has(code);
-            const saved        = noteSavedId === code;
-            const color        = statusColors.bucketList;
+            const localVal   = noteValues[code] !== undefined ? noteValues[code] : note;
+            const hasNote    = !!localVal.trim();
+            const isExpanded = expandedNotes.has(code);
+            const saved      = noteSavedId === code;
             return (
-              <div
-                key={code}
-                className="rounded-2xl border px-4 py-3"
-                style={{ background: color + '10', borderColor: color + '30' }}
-              >
+              <div key={code} style={{ background: T.card, border: `1.5px solid ${T.navy}35`, borderRadius: 14, padding: '12px 14px' }}>
                 {/* Country header row */}
-                <div className="flex items-center gap-3">
-                  <span className="text-xl flex-shrink-0">{getFlagEmoji(alpha2)}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <FlagImg alpha2={alpha2} size={18} />
                   <button
-                    className="flex-1 text-white text-sm font-medium text-left hover:text-violet-400 transition-colors truncate"
+                    style={{ flex: 1, color: T.text, fontSize: 13, fontWeight: 600, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Playfair Display', Georgia, serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                     onClick={() => navigate(`/country/${code}`, { state: { name, alpha2 } })}
                   >
                     {name}
                   </button>
                   {saved && (
-                    <span className="text-[11px] text-green-400 font-medium flex-shrink-0">✓ Saved</span>
+                    <span style={{ fontSize: 10, color: '#5a8a5a', fontWeight: 600, flexShrink: 0 }}>✓ Saved</span>
                   )}
                   <button
                     onClick={() => openEditFor({ id: code, name, alpha2 }, 'bucketList')}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 transition-colors flex-shrink-0"
+                    style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.text3, background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
                     title="Change status"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <IcoPencil size={13} color={T.text3} />
                   </button>
                   <button
                     onClick={() => setCountryStatus(code, null)}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                    style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.text3, background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
                     title="Remove"
                   >
-                    <X className="w-4 h-4" />
+                    <IcoX size={14} color={T.text3} />
                   </button>
                 </div>
 
-                {/* Dream note — shown when expanded */}
+                {/* Dream note */}
                 {isExpanded ? (
-                  <div className="mt-3">
+                  <div style={{ marginTop: 10 }}>
                     <textarea
                       autoFocus={!hasNote}
                       placeholder={`Why visit ${name}? What to see, eat, do…`}
                       value={localVal}
                       onChange={e => handleNoteChange(code, e.target.value)}
                       rows={localVal ? Math.min(Math.max(localVal.split('\n').length, 2), 6) : 2}
-                      className="w-full bg-slate-900/70 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-300 text-sm leading-relaxed resize-none focus:outline-none focus:border-yellow-500/50 placeholder-slate-600 transition-colors"
+                      style={{
+                        width: '100%', background: T.bg,
+                        border: `1.5px solid ${T.gold}50`,
+                        borderRadius: 10, padding: '9px 12px',
+                        color: T.text2, fontSize: 13, lineHeight: 1.65,
+                        resize: 'none', outline: 'none',
+                        fontFamily: "'Crimson Text', Georgia, serif",
+                        boxSizing: 'border-box',
+                      }}
                     />
                     <button
                       onClick={() => toggleNote(code)}
-                      className="mt-1.5 flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                      style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: T.text3, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Crimson Text', Georgia, serif" }}
                     >
-                      <span className="text-sm leading-none">↑</span>
+                      <span style={{ fontSize: 13, lineHeight: 1 }}>↑</span>
                       Hide note
                     </button>
                   </div>
                 ) : hasNote ? (
                   <button
                     onClick={() => toggleNote(code)}
-                    className="mt-3 flex items-center gap-1.5 text-xs text-slate-400 hover:text-yellow-400 transition-colors"
+                    style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: T.gold, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Crimson Text', Georgia, serif" }}
                   >
-                    <span className="text-sm leading-none">📖</span>
+                    <IcoBook size={13} color={T.gold} />
                     Show Dream Note
                   </button>
                 ) : (
                   <button
                     onClick={() => toggleNote(code)}
-                    className="mt-3 flex items-center gap-1.5 text-xs text-slate-500 hover:text-yellow-400 transition-colors"
+                    style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: T.text3, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Crimson Text', Georgia, serif" }}
                   >
-                    <span className="text-sm leading-none">✨</span>
+                    <IcoPencil size={13} color={T.text3} />
                     Add Dream Note
                   </button>
                 )}
@@ -246,30 +261,22 @@ export default function BucketList() {
           })}
         </Section>
 
-        {/* ── Visited ──────────────────────────────────────────────────────────── */}
+        {/* ── Visited ── */}
         {groups.visited.length > 0 && (
-          <Section title="Visited" color={statusColors.visited} count={groups.visited.length}>
-            <div className="grid grid-cols-2 gap-2">
+          <Section title="Visited" color={T.rose} count={groups.visited.length}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {groups.visited.map(({ code, name, alpha2 }) => (
-                <div
-                  key={code}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 border"
-                  style={{ background: statusColors.visited + '10', borderColor: statusColors.visited + '30' }}
-                >
-                  <Link
-                    to={`/country/${code}`}
-                    state={{ name, alpha2 }}
-                    className="flex items-center gap-2 flex-1 min-w-0"
-                  >
-                    <span className="text-lg flex-shrink-0">{getFlagEmoji(alpha2)}</span>
-                    <span className="text-white text-xs font-medium truncate">{name}</span>
+                <div key={code} style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.card, border: `1.5px solid ${T.rose}35`, borderRadius: 12, padding: '8px 10px' }}>
+                  <Link to={`/country/${code}`} state={{ name, alpha2 }} style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, textDecoration: 'none' }}>
+                    <FlagImg alpha2={alpha2} size={16} />
+                    <span style={{ color: T.text, fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Crimson Text', Georgia, serif" }}>{name}</span>
                   </Link>
                   <button
                     onClick={() => openEditFor({ id: code, name, alpha2 }, 'visited')}
-                    className="text-slate-600 hover:text-violet-400 transition-colors flex-shrink-0 ml-1"
+                    style={{ color: T.text3, background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, marginLeft: 2 }}
                     title="Edit status"
                   >
-                    <Pencil className="w-3 h-3" />
+                    <IcoPencil size={11} color={T.text3} />
                   </button>
                 </div>
               ))}
@@ -277,17 +284,17 @@ export default function BucketList() {
           </Section>
         )}
 
-        {/* ── Truly empty state ─────────────────────────────────────────────────── */}
+        {/* ── Empty state ── */}
         {totalTracked === 0 && (
-          <div className="text-center pt-8">
-            <p className="text-5xl mb-3">🗺️</p>
-            <p className="text-white font-semibold mb-1">No countries tracked yet</p>
-            <p className="text-slate-400 text-sm mb-5">
-              Tap <strong className="text-violet-400">Add</strong> above to get started, or mark countries directly on the Map.
+          <div style={{ textAlign: 'center', paddingTop: 32 }}>
+            <p style={{ fontSize: 48, margin: '0 0 10px' }}>🗺️</p>
+            <p style={{ color: T.text, fontWeight: 700, margin: '0 0 4px', fontFamily: "'Playfair Display', Georgia, serif" }}>No countries tracked yet</p>
+            <p style={{ color: T.text3, fontSize: 13, marginBottom: 18 }}>
+              Tap <strong style={{ color: T.purple }}>Add</strong> above to get started, or mark countries directly on the Map.
             </p>
             <button
               onClick={() => navigate('/map')}
-              className="bg-violet-500 text-white text-sm px-5 py-2.5 rounded-xl hover:bg-violet-400 transition-colors"
+              style={{ background: T.purple, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Crimson Text', Georgia, serif" }}
             >
               Open Map
             </button>
@@ -295,40 +302,30 @@ export default function BucketList() {
         )}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          Add / Edit Country Bottom Sheet
-      ═══════════════════════════════════════════════════════════════════════ */}
+      {/* ═══════════ Add / Edit Country Bottom Sheet ═══════════ */}
       {showAdd && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', pointerEvents: 'none' }}>
-          {/* Backdrop */}
-          <div
-            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', pointerEvents: 'all' }}
-            onClick={closeSheet}
-          />
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(44,26,14,0.35)', pointerEvents: 'all' }} onClick={closeSheet} />
 
-          {/* Sheet */}
           <div style={{
-            position: 'relative',
-            width: '100%',
-            maxWidth: '430px',
-            background: '#1e293b',
-            borderTop: '1px solid #334155',
+            position: 'relative', width: '100%', maxWidth: 430,
+            background: T.card, borderTop: `2.5px solid ${T.border}`,
             borderRadius: '20px 20px 0 0',
             paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
-            pointerEvents: 'all',
+            pointerEvents: 'all', boxShadow: '0 -4px 24px rgba(44,26,14,0.15)',
           }}>
             {/* Drag handle */}
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 4 }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#475569' }} />
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: T.border }} />
             </div>
 
             {/* Title row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 16px 14px' }}>
-              <p style={{ color: '#fff', fontWeight: 700, fontSize: 16, margin: 0 }}>
+              <p style={{ color: T.text, fontWeight: 700, fontSize: 16, margin: 0, fontFamily: "'Playfair Display', Georgia, serif" }}>
                 {addCountry && countryStatuses[addCountry.id] ? 'Edit Country Status' : 'Add Country'}
               </p>
-              <button onClick={closeSheet} style={{ color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-                <X className="w-5 h-5" />
+              <button onClick={closeSheet} style={{ color: T.text3, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                <IcoX size={18} color={T.text3} />
               </button>
             </div>
 
@@ -336,7 +333,9 @@ export default function BucketList() {
 
               {/* Country search */}
               <div style={{ position: 'relative' }}>
-                <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b', width: 16, height: 16, pointerEvents: 'none' }} />
+                <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                  <IcoSearch size={14} color={T.text3} />
+                </span>
                 <input
                   type="text"
                   placeholder="Search for a country…"
@@ -345,22 +344,17 @@ export default function BucketList() {
                   autoFocus
                   style={{
                     width: '100%', boxSizing: 'border-box',
-                    background: '#0f172a', border: '1px solid #334155',
-                    borderRadius: 12, padding: '11px 14px 11px 38px',
-                    color: '#e2e8f0', fontSize: 14, outline: 'none',
+                    background: T.bg, border: `1.5px solid ${T.border}`,
+                    borderRadius: 10, padding: '10px 12px 10px 34px',
+                    color: T.text, fontSize: 13, outline: 'none',
+                    fontFamily: "'Crimson Text', Georgia, serif",
                   }}
-                  onFocus={e => e.target.style.borderColor = '#8b5cf6'}
-                  onBlur={e => e.target.style.borderColor = '#334155'}
                 />
               </div>
 
               {/* Dropdown results */}
               {searchResults.length > 0 && (
-                <div style={{
-                  background: '#0f172a', border: '1px solid #334155',
-                  borderRadius: 12, overflow: 'hidden',
-                  maxHeight: 220, overflowY: 'auto',
-                }}>
+                <div style={{ background: T.card, border: `1.5px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', maxHeight: 220, overflowY: 'auto' }}>
                   {searchResults.map(c => {
                     const existing = countryStatuses[c.id]?.status;
                     return (
@@ -371,21 +365,12 @@ export default function BucketList() {
                           setAddSearch(c.name);
                           if (existing) setAddStatus(existing);
                         }}
-                        style={{
-                          width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '10px 14px', background: 'none', border: 'none',
-                          borderBottom: '1px solid #1e293b', cursor: 'pointer', textAlign: 'left',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'none', border: 'none', borderBottom: `1px solid ${T.border}`, cursor: 'pointer', textAlign: 'left', color: T.text, fontSize: 13 }}
                       >
-                        <span style={{ fontSize: 18, flexShrink: 0 }}>{getFlagEmoji(c.alpha2)}</span>
-                        <span style={{ color: '#e2e8f0', fontSize: 14, flex: 1 }}>{c.name}</span>
+                        <FlagImg alpha2={c.alpha2} size={16} />
+                        <span style={{ flex: 1 }}>{c.name}</span>
                         {existing && (
-                          <span style={{
-                            fontSize: 10, padding: '2px 8px', borderRadius: 99, flexShrink: 0,
-                            background: statusColors[existing] + '25', color: statusColors[existing], fontWeight: 600,
-                          }}>
+                          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, flexShrink: 0, background: `${T.purple}20`, color: T.purple, fontWeight: 600 }}>
                             {STATUS_LABELS[existing]}
                           </span>
                         )}
@@ -397,45 +382,39 @@ export default function BucketList() {
 
               {/* Selected country chip */}
               {addCountry && (
-                <div style={{
-                  background: '#0f172a', border: '1px solid #334155',
-                  borderRadius: 12, padding: '10px 14px',
-                  display: 'flex', alignItems: 'center', gap: 10,
-                }}>
-                  <span style={{ fontSize: 20 }}>{getFlagEmoji(addCountry.alpha2)}</span>
-                  <span style={{ color: '#fff', fontWeight: 600, fontSize: 14, flex: 1 }}>{addCountry.name}</span>
-                  <button
-                    onClick={() => { setAddCountry(null); setAddSearch(''); }}
-                    style={{ color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
-                  >
-                    <X className="w-4 h-4" />
+                <div style={{ background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <FlagImg alpha2={addCountry.alpha2} size={18} />
+                  <span style={{ color: T.text, fontWeight: 700, fontSize: 14, flex: 1, fontFamily: "'Playfair Display', Georgia, serif" }}>{addCountry.name}</span>
+                  <button onClick={() => { setAddCountry(null); setAddSearch(''); }} style={{ color: T.text3, background: 'none', border: 'none', cursor: 'pointer' }}>
+                    <IcoX size={15} color={T.text3} />
                   </button>
                 </div>
               )}
 
               {/* Status picker */}
               <div>
-                <p style={{ color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, margin: '0 0 8px' }}>
+                <p style={{ color: T.text3, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, margin: '0 0 8px', fontFamily: "'Crimson Text', Georgia, serif" }}>
                   Set Status
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {Object.entries(STATUS_LABELS).map(([key, label]) => {
                     const active = addStatus === key;
+                    const statusColor = key === 'visited' ? T.rose : key === 'bucketList' ? T.navy : T.gold;
                     return (
                       <button
                         key={key}
                         onClick={() => setAddStatus(key)}
                         style={{
-                          padding: '10px 8px', borderRadius: 10, cursor: 'pointer',
-                          border: active ? `2px solid ${statusColors[key]}` : '2px solid #334155',
-                          background: active ? statusColors[key] + '20' : '#0f172a',
-                          color: active ? statusColors[key] : '#64748b',
+                          padding: '9px 8px', borderRadius: 10, cursor: 'pointer',
+                          border: active ? `2px solid ${statusColor}` : `2px solid ${T.border}`,
+                          background: active ? statusColor + '18' : T.bg,
+                          color: active ? statusColor : T.text3,
                           fontSize: 12, fontWeight: active ? 700 : 500,
-                          display: 'flex', alignItems: 'center', gap: 7,
-                          transition: 'all 0.12s',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          transition: 'all 0.12s', fontFamily: "'Crimson Text', Georgia, serif",
                         }}
                       >
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: statusColors[key], flexShrink: 0 }} />
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: statusColor, flexShrink: 0 }} />
                         {label}
                       </button>
                     );
@@ -448,14 +427,7 @@ export default function BucketList() {
                 {addCountry && countryStatuses[addCountry.id] && (
                   <button
                     onClick={handleRemove}
-                    style={{
-                      flex: 1, padding: '12px', borderRadius: 12,
-                      border: '1.5px dashed #475569', background: 'transparent',
-                      color: '#94a3b8', fontSize: 13, cursor: 'pointer', fontWeight: 500,
-                      transition: 'all 0.12s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#f87171'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#475569'; e.currentTarget.style.color = '#94a3b8'; }}
+                    style={{ flex: 1, padding: 11, borderRadius: 10, border: `1.5px dashed ${T.border}`, background: 'transparent', color: T.text3, fontSize: 13, cursor: 'pointer', fontWeight: 500, fontFamily: "'Crimson Text', Georgia, serif" }}
                   >
                     Remove
                   </button>
@@ -464,12 +436,12 @@ export default function BucketList() {
                   onClick={handleSave}
                   disabled={!addCountry}
                   style={{
-                    flex: 2, padding: '12px', borderRadius: 12, border: 'none',
-                    background: addCountry ? '#8b5cf6' : '#1e293b',
-                    color: addCountry ? '#fff' : '#475569',
-                    fontSize: 14, fontWeight: 700,
+                    flex: 2, padding: 11, borderRadius: 10, border: 'none',
+                    background: addCountry ? T.purple : `${T.border}80`,
+                    color: addCountry ? '#fff' : T.text3,
+                    fontSize: 13, fontWeight: 700,
                     cursor: addCountry ? 'pointer' : 'not-allowed',
-                    transition: 'background 0.12s',
+                    transition: 'background 0.12s', fontFamily: "'Playfair Display', Georgia, serif",
                   }}
                 >
                   {addCountry && countryStatuses[addCountry.id] ? 'Update Status' : 'Add to List'}
@@ -483,61 +455,45 @@ export default function BucketList() {
   );
 }
 
-// ─── Country row for Traveling ────────────────────────────────────────────────
-function CountryRow({ code, name, alpha2, currentStatus, statusColors, onEdit, onRemove }) {
+// ── Country row for Traveling ─────────────────────────────────────────────────
+function CountryRow({ code, name, alpha2, color, onEdit, onRemove }) {
   const navigate = useNavigate();
-  const color = statusColors[currentStatus];
-
   return (
-    <div
-      className="flex items-center gap-3 rounded-2xl border px-4 py-3"
-      style={{ background: color + '10', borderColor: color + '30' }}
-    >
-      <span className="text-xl flex-shrink-0">{getFlagEmoji(alpha2)}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: T.card, border: `1.5px solid ${color}35`, borderRadius: 12, padding: '10px 12px' }}>
+      <FlagImg alpha2={alpha2} size={18} />
       <button
-        className="flex-1 text-white text-sm font-medium text-left hover:text-violet-400 transition-colors truncate"
+        style={{ flex: 1, color: T.text, fontSize: 13, fontWeight: 600, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Playfair Display', Georgia, serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         onClick={() => navigate(`/country/${code}`, { state: { name, alpha2 } })}
       >
         {name}
       </button>
-      <button
-        onClick={onEdit}
-        className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 transition-colors flex-shrink-0"
-        title="Change status"
-      >
-        <Pencil className="w-3.5 h-3.5" />
+      <button onClick={onEdit} style={{ width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.text3, background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
+        <IcoPencil size={12} color={T.text3} />
       </button>
-      <button
-        onClick={onRemove}
-        className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
-        title="Remove"
-      >
-        <X className="w-4 h-4" />
+      <button onClick={onRemove} style={{ width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.text3, background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
+        <IcoX size={13} color={T.text3} />
       </button>
     </div>
   );
 }
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
+// ── Section wrapper ────────────────────────────────────────────────────────────
 function Section({ title, color, count, emptyText, children }) {
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
-        <h2 className="text-white font-semibold text-sm">{title}</h2>
-        <span
-          className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
-          style={{ background: color + '25', color }}
-        >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ width: 9, height: 9, borderRadius: '50%', flexShrink: 0, background: color }} />
+        <h2 style={{ color: T.text, fontWeight: 700, fontSize: 13, margin: 0, fontFamily: "'Playfair Display', Georgia, serif" }}>{title}</h2>
+        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700, background: color + '22', color, fontFamily: "'Crimson Text', Georgia, serif" }}>
           {count}
         </span>
       </div>
       {count === 0 && emptyText ? (
-        <div className="bg-slate-800/40 border border-dashed border-slate-700 rounded-2xl p-6 text-center">
-          <p className="text-slate-500 text-sm">{emptyText}</p>
+        <div style={{ background: `${T.border}25`, border: `1.5px dashed ${T.border}`, borderRadius: 14, padding: '20px 16px', textAlign: 'center' }}>
+          <p style={{ color: T.text3, fontSize: 13, margin: 0 }}>{emptyText}</p>
         </div>
       ) : (
-        <div className="space-y-2">{children}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{children}</div>
       )}
     </div>
   );

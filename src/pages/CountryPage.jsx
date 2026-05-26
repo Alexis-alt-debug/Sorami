@@ -1,11 +1,26 @@
-﻿import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
+import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
-import { ArrowLeft, Plus, Calendar, Star, Trash2, Pencil, BookOpen, Cloud, Users } from 'lucide-react';
+import { IcoArrowLeft, IcoPlus, IcoCalendar, IcoStar, IcoTrash, IcoPencil, IcoBook, IcoUsers, IcoCoin, IcoFlower, IcoSun, IcoMapleLeaf, IcoSnowflake } from '../components/VintageIcons';
 import { formatBudget } from '../components/CurrencyBudgetField';
 import { useTravel } from '../context/TravelContext';
-import { getCountryInfo, getFlagEmoji } from '../data/countryNames';
+import { getCountryInfo } from '../data/countryNames';
+import FlagImg from '../components/FlagImg';
 import { format, parseISO } from 'date-fns';
 import PhotoLightbox from '../components/PhotoLightbox';
+
+// ── Design tokens ──────────────────────────────────────────────────────────────
+const T = {
+  bg:     '#f0e8d8',
+  card:   '#faf6ef',
+  border: '#d4c4a8',
+  text:   '#2c1a0e',
+  text2:  '#7a6048',
+  text3:  '#a89070',
+  rose:   '#c4809a',
+  navy:   '#6b7cb5',
+  gold:   '#c4922a',
+  purple: '#7b6eb0',
+};
 
 function formatDateRange(date, dateTo) {
   if (!date) return null;
@@ -27,6 +42,22 @@ const STATUS_LABELS = {
   current:    'Traveling',
 };
 
+function SeasonIcon({ season, size = 10, color = '#a89070' }) {
+  switch ((season || '').toLowerCase()) {
+    case 'spring': return <IcoFlower    size={size} color={color} />;
+    case 'summer': return <IcoSun       size={size} color={color} />;
+    case 'autumn': return <IcoMapleLeaf size={size} color={color} />;
+    case 'winter': return <IcoSnowflake size={size} color={color} />;
+    default:       return null;
+  }
+}
+
+const STATUS_COLORS = {
+  visited:    T.rose,
+  bucketList: T.navy,
+  current:    T.gold,
+};
+
 export default function CountryPage() {
   const { code } = useParams();
   const location = useLocation();
@@ -35,111 +66,99 @@ export default function CountryPage() {
 
   const info = location.state || getCountryInfo(code);
   const countryName = info.name || `Country ${code}`;
-  const flag = getFlagEmoji(info.alpha2);
   const status = countryStatuses[code]?.status;
   const countryMemories = memories.filter(m => m.countryCode === code);
 
   return (
-    <div className="min-h-screen">
+    <div style={{ minHeight: '100vh', background: T.bg }}>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-white transition-colors">
-          <ArrowLeft className="w-5 h-5" />
+      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: T.card, borderBottom: `2px solid ${T.border}`, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 2px 8px rgba(44,26,14,0.06)' }}>
+        <button onClick={() => navigate(-1)} style={{ color: T.text3, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+          <IcoArrowLeft size={18} color={T.text3} />
         </button>
-        <span className="text-2xl">{flag}</span>
-        <div className="flex-1">
-          <h1 className="text-white font-bold text-lg leading-tight">{countryName}</h1>
+        <FlagImg alpha2={info.alpha2} size={24} />
+        <div style={{ flex: 1 }}>
+          <h1 style={{ color: T.text, fontWeight: 700, fontSize: 17, margin: 0, fontFamily: "'Playfair Display', Georgia, serif" }}>{countryName}</h1>
           {status && (
-            <span
-              className="text-xs font-medium"
-              style={{ color: statusColors[status] }}
-            >
+            <span style={{ fontSize: 11, fontWeight: 600, color: STATUS_COLORS[status] || statusColors[status] }}>
               {STATUS_LABELS[status]}
             </span>
           )}
         </div>
-        {/* Diary button */}
         <button
           onClick={() => navigate('/diary', { state: { search: countryName } })}
-          className="flex items-center gap-1.5 bg-violet-500/15 border border-violet-500/30 text-violet-300 text-xs font-medium px-3 py-2 rounded-xl hover:bg-violet-500/25 transition-colors"
+          style={{ display: 'flex', alignItems: 'center', gap: 5, background: `${T.purple}15`, border: `1.5px solid ${T.purple}40`, color: T.purple, fontSize: 11, fontWeight: 600, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Crimson Text', Georgia, serif" }}
         >
-          <BookOpen className="w-3.5 h-3.5" />
-          Diary
+          <IcoBook size={13} color={T.purple} /> Diary
         </button>
-
-        {/* Add memory button */}
         <Link
           to={`/country/${code}/add`}
           state={info}
-          className="w-9 h-9 bg-violet-500 hover:bg-violet-400 rounded-xl flex items-center justify-center transition-colors"
+          style={{ width: 34, height: 34, background: T.purple, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
         >
-          <Plus className="w-5 h-5 text-white" />
+          <IcoPlus size={18} color="#fff" />
         </Link>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
         {/* Status selector */}
-        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4">
-          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-3">Travel Status</p>
-          <div className="grid grid-cols-2 gap-2">
-            {Object.entries(STATUS_LABELS).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setCountryStatus(code, key)}
-                className={`py-2.5 px-3 rounded-xl text-sm font-medium border transition-all text-left ${
-                  status === key ? 'text-white' : 'bg-slate-700/50 text-slate-400 border-slate-600 hover:border-slate-500'
-                }`}
-                style={status === key ? {
-                  background: statusColors[key] + '25',
-                  borderColor: statusColors[key] + '70',
-                  color: statusColors[key],
-                } : {}}
-              >
-                <span
-                  className="w-2 h-2 rounded-full inline-block mr-2"
-                  style={{ background: statusColors[key] }}
-                />
-                {label}
-              </button>
-            ))}
+        <div style={{ background: T.card, border: `1.5px solid ${T.border}`, borderRadius: 14, padding: 14 }}>
+          <p style={{ color: T.text3, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px', fontFamily: "'Crimson Text', Georgia, serif" }}>
+            Travel Status
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {Object.entries(STATUS_LABELS).map(([key, label]) => {
+              const isActive = status === key;
+              const color = STATUS_COLORS[key] || statusColors[key];
+              return (
+                <button
+                  key={key}
+                  onClick={() => setCountryStatus(code, key)}
+                  style={{
+                    padding: '10px 10px', borderRadius: 10, fontSize: 12, fontWeight: isActive ? 700 : 500,
+                    border: isActive ? `2px solid ${color}` : `2px solid ${T.border}`,
+                    background: isActive ? color + '18' : T.bg,
+                    color: isActive ? color : T.text3,
+                    cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 6,
+                    transition: 'all 0.15s', fontFamily: "'Crimson Text', Georgia, serif",
+                  }}
+                >
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Memories */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div>
-              <p className="text-white font-semibold">Memories ({countryMemories.length})</p>
-              <p className="text-slate-500 text-xs mt-0.5">Tap a card to view full diary entry</p>
+              <p style={{ color: T.text, fontWeight: 700, margin: 0, fontFamily: "'Playfair Display', Georgia, serif" }}>
+                Memories ({countryMemories.length})
+              </p>
+              <p style={{ color: T.text3, fontSize: 11, margin: '2px 0 0' }}>Tap a card to view full diary entry</p>
             </div>
-            <Link
-              to={`/country/${code}/add`}
-              state={info}
-              className="text-xs text-violet-400 hover:text-violet-300"
-            >
+            <Link to={`/country/${code}/add`} state={info}
+              style={{ fontSize: 12, color: T.purple, textDecoration: 'none', fontFamily: "'Crimson Text', Georgia, serif" }}>
               + Add Memory
             </Link>
           </div>
 
           {countryMemories.length === 0 ? (
-            <div className="bg-slate-800/50 border border-slate-700 border-dashed rounded-2xl p-8 text-center">
-              <p className="text-slate-500 text-sm mb-3">No memories yet</p>
-              <Link
-                to={`/country/${code}/add`}
-                state={info}
-                className="inline-flex items-center gap-1.5 bg-violet-500 text-white text-sm px-4 py-2 rounded-xl hover:bg-violet-400 transition-colors"
-              >
-                <Plus className="w-4 h-4" /> Add First Memory
+            <div style={{ background: `${T.border}20`, border: `1.5px dashed ${T.border}`, borderRadius: 14, padding: '32px 16px', textAlign: 'center' }}>
+              <p style={{ color: T.text3, fontSize: 13, margin: '0 0 12px' }}>No memories yet</p>
+              <Link to={`/country/${code}/add`} state={info}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: T.purple, color: '#fff', textDecoration: 'none', fontSize: 13, padding: '8px 16px', borderRadius: 10, fontFamily: "'Crimson Text', Georgia, serif" }}>
+                <IcoPlus size={14} color="#fff" /> Add First Memory
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {countryMemories.map(memory => (
-                <MemoryCard
-                  key={memory.id}
-                  memory={memory}
-                  onDelete={() => deleteMemory(memory.id)}
-                />
+                <MemoryCard key={memory.id} memory={memory} onDelete={() => deleteMemory(memory.id)} />
               ))}
             </div>
           )}
@@ -155,8 +174,7 @@ function MemoryCard({ memory, onDelete }) {
   const [lightbox, setLightbox] = useState(null);
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
-      {/* Photo lightbox */}
+    <div style={{ background: T.card, border: `1.5px solid ${T.border}`, borderRadius: 16, overflow: 'hidden' }}>
       {lightbox !== null && memory.photos?.length > 0 && (
         <PhotoLightbox
           photos={memory.photos}
@@ -168,115 +186,79 @@ function MemoryCard({ memory, onDelete }) {
         />
       )}
 
-      {/* Tappable area → opens Diary filtered to this country */}
-      <div
-        className="cursor-pointer active:opacity-80 transition-opacity"
-        onClick={() => navigate('/diary', { state: { search: memory.countryName } })}
-      >
-        {/* Photos strip — tap any photo to zoom */}
+      <div style={{ cursor: 'pointer' }} onClick={() => navigate('/diary', { state: { search: memory.countryName } })}>
         {memory.photos?.length > 0 && (
-          <div className="flex gap-0.5 h-36 overflow-hidden">
+          <div style={{ display: 'flex', gap: 2, height: 130, overflow: 'hidden' }}>
             {memory.photos.slice(0, 4).map((url, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={e => { e.stopPropagation(); setLightbox({ index: i }); }}
-                className="flex-1 min-w-0 overflow-hidden focus:outline-none"
-                style={{ padding: 0, background: 'none', border: 'none', cursor: 'zoom-in' }}
-              >
-                <img src={url} alt="" className="w-full h-full object-cover" />
+              <button key={i} type="button" onClick={e => { e.stopPropagation(); setLightbox({ index: i }); }}
+                style={{ flex: 1, minWidth: 0, overflow: 'hidden', padding: 0, background: 'none', border: 'none', cursor: 'zoom-in' }}>
+                <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </button>
             ))}
           </div>
         )}
 
-        <div className="p-4">
-          {/* Date + rating row */}
-          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mb-2">
-            {memory.region && (
-              <span className="text-violet-400 font-semibold">{memory.region}</span>
-            )}
-            {dateStr && (
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" />{dateStr}
-              </span>
-            )}
+        <div style={{ padding: 14 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, fontSize: 11, color: T.text3, marginBottom: 8 }}>
+            {memory.region && <span style={{ color: T.navy, fontWeight: 700 }}>{memory.region}</span>}
+            {dateStr && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><IcoCalendar size={10} color={T.text3} />{dateStr}</span>}
             {memory.rating > 0 && (
-              <span className="flex items-center gap-0.5 text-yellow-400">
-                {Array.from({ length: memory.rating }).map((_, i) => (
-                  <Star key={i} className="w-3 h-3 fill-current" />
-                ))}
+              <span style={{ display: 'flex', alignItems: 'center', gap: 2, color: T.gold }}>
+                {Array.from({ length: memory.rating }).map((_, i) => <IcoStar key={i} size={10} color={T.gold} filled />)}
               </span>
             )}
-            {memory.weather && (
-              <span className="flex items-center gap-1"><Cloud className="w-3 h-3" />{memory.weather}</span>
+            {(memory.season || memory.weather) && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <SeasonIcon season={memory.season || memory.weather} size={10} color={T.text3} />
+                <span style={{ fontSize: 11, color: T.text3 }}>{memory.season || memory.weather}</span>
+              </span>
             )}
-            {memory.budget > 0 && (
-              <span>💰 {formatBudget(memory.budget, memory.budgetCurrency)}</span>
-            )}
+            {memory.budget > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><IcoCoin size={10} color={T.gold} />{formatBudget(memory.budget, memory.budgetCurrency)}</span>}
           </div>
 
-          {/* Travel partners */}
           {memory.partners?.length > 0 && (
-            <div className="flex items-center gap-1.5 mb-2">
-              <Users className="w-3 h-3 text-slate-500 flex-shrink-0" />
-              <span className="text-xs text-slate-400">{memory.partners.join(', ')}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
+              <IcoUsers size={11} color={T.text3} />
+              <span style={{ fontSize: 11, color: T.text3 }}>{memory.partners.join(', ')}</span>
             </div>
           )}
 
-          {/* Diary text */}
           {memory.diary ? (
-            <div className="mt-1 pt-2 border-t border-slate-700">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">Diary</p>
-              <p style={{ color: '#cbd5e1', fontSize: '13px', lineHeight: '1.65', margin: 0 }}>
-                {memory.diary}
-              </p>
+            <div style={{ marginTop: 4, paddingTop: 8, borderTop: `1px solid ${T.border}` }}>
+              <p style={{ fontSize: 10, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, margin: '0 0 4px', fontFamily: "'Crimson Text', Georgia, serif" }}>Diary</p>
+              <p style={{ color: T.text2, fontSize: 13, lineHeight: 1.65, margin: 0, fontFamily: "'Crimson Text', Georgia, serif" }}>{memory.diary}</p>
             </div>
           ) : (
-            <p className="text-slate-600 text-xs italic">No diary entry written.</p>
+            <p style={{ color: T.text3, fontSize: 11, fontStyle: 'italic' }}>No diary entry written.</p>
           )}
 
-          {/* Tags */}
           {memory.tags?.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10 }}>
               {memory.tags.map(tag => (
-                <span key={tag} className="text-[11px] bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full">
-                  #{tag}
-                </span>
+                <span key={tag} style={{ fontSize: 10, background: `${T.navy}14`, color: T.navy, border: `1px solid ${T.navy}30`, padding: '2px 8px', borderRadius: 20 }}>#{tag}</span>
               ))}
             </div>
           )}
 
-          {/* Diary hint */}
-          <div className="flex items-center gap-1 mt-3 text-violet-400">
-            <BookOpen className="w-3 h-3" />
-            <span className="text-[11px]">View in Diary</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 10, color: T.navy }}>
+            <IcoBook size={11} color={T.navy} />
+            <span style={{ fontSize: 11 }}>View in Diary</span>
           </div>
         </div>
       </div>
 
-      {/* Action row — Edit + Delete, separate so neither triggers navigation */}
-      <div className="px-4 pb-3 flex items-center justify-between border-t border-slate-700/50">
-        {/* Edit */}
+      <div style={{ padding: '8px 14px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${T.border}` }}>
         <button
-          onClick={() => navigate(`/country/${memory.countryCode}/add`, {
-            state: {
-              name:   memory.countryName,
-              alpha2: memory.countryAlpha2 || '',
-              memory,
-            },
-          })}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-violet-400 transition-colors text-xs py-1.5 px-2"
+          onClick={() => navigate(`/country/${memory.countryCode}/add`, { state: { name: memory.countryName, alpha2: memory.countryAlpha2 || '', memory } })}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, color: T.text3, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontFamily: "'Crimson Text', Georgia, serif" }}
         >
-          <Pencil className="w-3.5 h-3.5" /> Edit
+          <IcoPencil size={12} color={T.text3} /> Edit
         </button>
-
-        {/* Delete */}
         <button
           onClick={onDelete}
-          className="flex items-center gap-1.5 text-slate-600 hover:text-red-400 transition-colors text-xs py-1.5 px-2"
+          style={{ display: 'flex', alignItems: 'center', gap: 5, color: T.text3, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontFamily: "'Crimson Text', Georgia, serif" }}
         >
-          <Trash2 className="w-3.5 h-3.5" /> Delete
+          <IcoTrash size={12} color={T.text3} /> Delete
         </button>
       </div>
     </div>

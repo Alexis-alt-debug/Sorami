@@ -1,8 +1,9 @@
 ﻿import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, X, Star, MapPin, Plus, Users } from 'lucide-react';
+import { IcoArrowLeft, IcoCamera, IcoX, IcoStar, IcoMapPin, IcoPlus, IcoUsers, IcoFlower, IcoSun, IcoMapleLeaf, IcoSnowflake } from '../components/VintageIcons';
 import { useTravel } from '../context/TravelContext';
-import { getCountryInfo, getFlagEmoji } from '../data/countryNames';
+import { getCountryInfo } from '../data/countryNames';
+import FlagImg from '../components/FlagImg';
 import CurrencyBudgetField from '../components/CurrencyBudgetField';
 
 const MAX_PHOTOS = 4;
@@ -47,8 +48,6 @@ export default function AddMemory() {
   const info = location.state?.name
     ? { name: location.state.name, alpha2: location.state.alpha2 }
     : getCountryInfo(code);
-  const flag = getFlagEmoji(info.alpha2);
-
   const [isMultiDay, setIsMultiDay] = useState(!!(editMemory?.dateTo));
 
   const [form, setForm] = useState({
@@ -59,7 +58,7 @@ export default function AddMemory() {
     rating:  editMemory?.rating  ?? 0,
     budget:         editMemory?.budget  != null ? String(editMemory.budget) : '',
     budgetCurrency: editMemory?.budgetCurrency || 'USD',
-    weather: editMemory?.weather ?? '',
+    season: editMemory?.season || editMemory?.weather || '',
     tags:    editMemory?.tags?.join(', ')  ?? '',
     // partners is now an array of strings
     partners: editMemory?.partners || [],
@@ -231,7 +230,7 @@ export default function AddMemory() {
         rating:  form.rating || null,
         budget:         form.budget ? Number(form.budget) : null,
         budgetCurrency: form.budget ? (form.budgetCurrency || 'USD') : null,
-        weather: form.weather,
+        season: form.season,
         tags,
         partners: form.partners, // array of strings
         photos: photoUrls,
@@ -256,24 +255,24 @@ export default function AddMemory() {
 
   // ─── UI ────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen pb-8">
+    <div style={{ minHeight: '100vh', paddingBottom: 32, background: '#f0e8d8' }}>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-white">
-          <ArrowLeft className="w-5 h-5" />
+      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#faf6ef', borderBottom: '2px solid #d4c4a8', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 2px 8px rgba(44,26,14,0.06)' }}>
+        <button onClick={() => navigate(-1)} style={{ color: '#a89070', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+          <IcoArrowLeft size={18} color="#a89070" />
         </button>
-        <span className="text-xl">{flag}</span>
-        <div className="flex-1">
-          <h1 className="text-white font-bold">{isEdit ? 'Edit Memory' : 'Add Memory'}</h1>
-          <p className="text-slate-400 text-xs">{info.name}</p>
+        <FlagImg alpha2={info.alpha2} size={22} />
+        <div style={{ flex: 1 }}>
+          <h1 style={{ color: '#2c1a0e', fontWeight: 700, margin: 0, fontFamily: "'Playfair Display', Georgia, serif" }}>{isEdit ? 'Edit Memory' : 'Add Memory'}</h1>
+          <p style={{ color: '#a89070', fontSize: 11, margin: '2px 0 0' }}>{info.name}</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-4 space-y-5">
+      <form onSubmit={handleSubmit} style={{ padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
         {/* Success */}
         {saved && (
-          <div className="bg-green-500/10 border border-green-500/30 rounded-2xl px-4 py-3">
-            <p className="text-green-400 text-sm font-medium">
+          <div style={{ background: 'rgba(90,138,90,0.1)', border: '1.5px solid rgba(90,138,90,0.4)', borderRadius: 12, padding: '10px 14px' }}>
+            <p style={{ color: '#5a8a5a', fontSize: 13, fontWeight: 600, margin: 0 }}>
               ✅ Memory {isEdit ? 'updated' : 'saved'}! {isEdit ? 'Going back…' : 'Opening Diary…'}
             </p>
           </div>
@@ -281,61 +280,52 @@ export default function AddMemory() {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl px-4 py-3">
-            <p className="text-red-400 text-sm">{error}</p>
+          <div style={{ background: 'rgba(196,128,154,0.1)', border: '1.5px solid rgba(196,128,154,0.4)', borderRadius: 12, padding: '10px 14px' }}>
+            <p style={{ color: '#c4809a', fontSize: 13, margin: 0 }}>{error}</p>
           </div>
         )}
 
         {/* Photos */}
         <div>
-          <label className="text-xs text-slate-400 uppercase tracking-wider font-medium block mb-2">
-            Photos{' '}
-            <span className="normal-case text-slate-600">(optional · max {MAX_PHOTOS})</span>
+          <label style={{ display: 'block', fontSize: 10, color: '#a89070', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 8, fontFamily: "'Crimson Text', Georgia, serif" }}>
+            Photos <span style={{ textTransform: 'none', color: '#a89070', fontWeight: 400 }}>(optional · max {MAX_PHOTOS})</span>
           </label>
-          <div className="flex gap-2 flex-wrap">
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {previews.map((src, i) => (
-              <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden">
-                <img src={src} alt="" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => removePhoto(i)}
-                  className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center"
-                >
-                  <X className="w-3 h-3 text-white" />
+              <div key={i} style={{ position: 'relative', width: 72, height: 72, borderRadius: 10, overflow: 'hidden' }}>
+                <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button type="button" onClick={() => removePhoto(i)}
+                  style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, background: 'rgba(44,26,14,0.7)', borderRadius: '50%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <IcoX size={10} color="#fff" />
                 </button>
               </div>
             ))}
             {photos.length < MAX_PHOTOS && (
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="w-20 h-20 border-2 border-dashed border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-500 hover:border-violet-500 hover:text-violet-400 transition-colors"
-              >
-                <Camera className="w-5 h-5" />
-                <span className="text-[10px]">Add</span>
+              <button type="button" onClick={() => fileRef.current?.click()}
+                style={{ width: 72, height: 72, border: '2px dashed #d4c4a8', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: '#a89070', background: 'transparent', cursor: 'pointer', fontSize: 22 }}>
+                <IcoCamera size={18} color="#a89070" />
+                <span style={{ fontSize: 10 }}>Add</span>
               </button>
             )}
           </div>
           {photos.length >= MAX_PHOTOS && (
-            <p className="text-xs text-amber-400/80 mt-2">
-              Maximum {MAX_PHOTOS} photos reached. Remove one to add another.
-            </p>
+            <p style={{ color: '#c4922a', fontSize: 11, marginTop: 6 }}>Maximum {MAX_PHOTOS} photos reached. Remove one to add another.</p>
           )}
-          <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhotos} className="hidden" />
+          <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhotos} style={{ display: 'none' }} />
         </div>
 
         {/* City */}
         <Field label="City">
           {/* Selected city chip */}
           {form.region && (
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex items-center gap-2 bg-violet-500/10 border border-violet-500/30 rounded-full px-3 py-1.5">
-                <MapPin className="w-3 h-3 text-violet-400 flex-shrink-0" />
-                <span className="text-violet-400 text-sm font-medium">{form.region}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(107,124,181,0.12)', border: '1.5px solid rgba(107,124,181,0.35)', borderRadius: 20, padding: '5px 12px' }}>
+                <IcoMapPin size={12} color="#6b7cb5" />
+                <span style={{ color: '#6b7cb5', fontSize: 13, fontWeight: 600, fontFamily: "'Crimson Text', Georgia, serif" }}>{form.region}</span>
                 <button
                   type="button"
                   onClick={() => { set('region', ''); setCitySearch(''); setCityOpen(false); }}
-                  className="text-slate-500 hover:text-slate-300 ml-1 text-base leading-none"
+                  style={{ color: '#a89070', background: 'none', border: 'none', cursor: 'pointer', marginLeft: 2, fontSize: 14, lineHeight: 1, padding: 0 }}
                 >✕</button>
               </div>
             </div>
@@ -353,25 +343,14 @@ export default function AddMemory() {
               disabled={cityLoading}
             />
 
-            {/* Scrollable city dropdown — only shown when explicitly open */}
+            {/* Scrollable city dropdown */}
             {cityOpen && filteredCities.length > 0 && (
-              <div
-                className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-2xl z-10"
-                style={{ maxHeight: 220, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
-              >
+              <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', marginTop: 4, background: '#faf6ef', border: '1.5px solid #d4c4a8', borderRadius: 12, overflow: 'hidden', zIndex: 10, boxShadow: '0 8px 24px rgba(44,26,14,0.12)', maxHeight: 200, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 {filteredCities.map((city, i) => (
-                  <button
-                    key={city}
-                    type="button"
-                    onClick={() => {
-                      set('region', city);
-                      setCitySearch('');
-                      setCityOpen(false); // ← FIX: close dropdown after selection
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-slate-200 hover:bg-slate-800 transition-colors"
-                    style={{ borderBottom: i < filteredCities.length - 1 ? '1px solid #1e293b' : 'none' }}
-                  >
-                    <MapPin className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                  <button key={city} type="button"
+                    onClick={() => { set('region', city); setCitySearch(''); setCityOpen(false); }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'none', border: 'none', borderBottom: i < filteredCities.length - 1 ? '1px solid #d4c4a8' : 'none', cursor: 'pointer', textAlign: 'left', color: '#2c1a0e', fontSize: 13, fontFamily: "'Crimson Text', Georgia, serif" }}>
+                    <IcoMapPin size={12} color="#a89070" />
                     {city}
                   </button>
                 ))}
@@ -380,12 +359,10 @@ export default function AddMemory() {
 
             {/* No match → offer custom entry */}
             {cityOpen && citySearch.trim() && filteredCities.length === 0 && !cityLoading && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-2xl z-10">
-                <button
-                  type="button"
+              <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', marginTop: 4, background: '#faf6ef', border: '1.5px solid #d4c4a8', borderRadius: 12, overflow: 'hidden', zIndex: 10 }}>
+                <button type="button"
                   onClick={() => { set('region', citySearch.trim()); setCitySearch(''); setCityOpen(false); }}
-                  className="w-full px-4 py-3 text-left text-sm text-violet-400 hover:bg-slate-800"
-                >
+                  style={{ width: '100%', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', color: '#7b6eb0', fontSize: 13, fontFamily: "'Crimson Text', Georgia, serif" }}>
                   + Use "{citySearch.trim()}"
                 </button>
               </div>
@@ -393,8 +370,8 @@ export default function AddMemory() {
           </div>
 
           {cityLoading && (
-            <p className="text-slate-600 text-xs mt-1.5 flex items-center gap-1.5">
-              <span className="w-3 h-3 border border-slate-600 border-t-violet-500 rounded-full animate-spin inline-block" />
+            <p style={{ color: '#a89070', fontSize: 11, marginTop: 5, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 11, height: 11, border: '2px solid #d4c4a8', borderTopColor: '#7b6eb0', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
               Loading cities…
             </p>
           )}
@@ -402,9 +379,9 @@ export default function AddMemory() {
 
         {/* Date */}
         <div>
-          <label className="text-xs text-slate-400 uppercase tracking-wider font-medium block mb-2">Travel Date</label>
+          <label style={{ display: 'block', fontSize: 10, color: '#a89070', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 8, fontFamily: "'Crimson Text', Georgia, serif" }}>Travel Date</label>
 
-          <div className="grid grid-cols-2 gap-2 mb-3">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
             {[
               { multi: false, label: '📅 Single Day' },
               { multi: true,  label: '🗓️ Multiple Days' },
@@ -416,11 +393,14 @@ export default function AddMemory() {
                   setIsMultiDay(multi);
                   if (!multi) set('dateTo', '');
                 }}
-                className={`py-2.5 rounded-xl text-xs font-semibold border transition-all ${
-                  isMultiDay === multi
-                    ? 'bg-violet-500/20 text-violet-400 border-violet-500/40'
-                    : 'bg-slate-800 text-slate-500 border-slate-700 hover:border-slate-600'
-                }`}
+                style={{
+                  padding: '10px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                  border: isMultiDay === multi ? '2px solid rgba(123,110,176,0.5)' : '1.5px solid #d4c4a8',
+                  background: isMultiDay === multi ? 'rgba(123,110,176,0.1)' : '#f0e8d8',
+                  color: isMultiDay === multi ? '#7b6eb0' : '#a89070',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                  fontFamily: "'Crimson Text', Georgia, serif",
+                }}
               >
                 {label}
               </button>
@@ -428,13 +408,13 @@ export default function AddMemory() {
           </div>
 
           {isMultiDay ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <p className="text-[11px] text-slate-500 mb-1.5">From</p>
+                <p style={{ fontSize: 11, color: '#a89070', marginBottom: 6, fontFamily: "'Crimson Text', Georgia, serif" }}>From</p>
                 <input type="date" value={form.date} onChange={e => set('date', e.target.value)} className="input-field" />
               </div>
               <div>
-                <p className="text-[11px] text-slate-500 mb-1.5">To</p>
+                <p style={{ fontSize: 11, color: '#a89070', marginBottom: 6, fontFamily: "'Crimson Text', Georgia, serif" }}>To</p>
                 <input type="date" value={form.dateTo} onChange={e => set('dateTo', e.target.value)} min={form.date || undefined} className="input-field" />
               </div>
             </div>
@@ -445,10 +425,11 @@ export default function AddMemory() {
 
         {/* Rating */}
         <Field label="Rating">
-          <div className="flex gap-2">
+          <div style={{ display: 'flex', gap: 8 }}>
             {[1, 2, 3, 4, 5].map(n => (
-              <button key={n} type="button" onClick={() => set('rating', form.rating === n ? 0 : n)} className="transition-transform active:scale-90">
-                <Star className={`w-7 h-7 ${form.rating >= n ? 'text-yellow-400 fill-yellow-400' : 'text-slate-600'}`} />
+              <button key={n} type="button" onClick={() => set('rating', form.rating === n ? 0 : n)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'transform 0.1s' }}>
+                <IcoStar size={28} color={form.rating >= n ? '#c4922a' : '#d4c4a8'} filled={form.rating >= n} />
               </button>
             ))}
           </div>
@@ -469,12 +450,12 @@ export default function AddMemory() {
         <Field label="Travel Partners">
           {/* Selected partner chips */}
           {form.partners.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-3">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
               {form.partners.map(name => (
-                <div key={name} className="flex items-center gap-1.5 bg-violet-500/15 border border-violet-500/30 text-violet-400 text-xs px-3 py-1.5 rounded-full">
+                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(107,124,181,0.12)', border: '1.5px solid rgba(107,124,181,0.35)', color: '#6b7cb5', fontSize: 12, padding: '5px 12px', borderRadius: 20, fontFamily: "'Crimson Text', Georgia, serif" }}>
                   <span>{name}</span>
-                  <button type="button" onClick={() => togglePartner(name)} className="text-violet-300 hover:text-white leading-none">
-                    <X className="w-3 h-3" />
+                  <button type="button" onClick={() => togglePartner(name)} style={{ color: '#a89070', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+                    <IcoX size={12} color="#a89070" />
                   </button>
                 </div>
               ))}
@@ -485,45 +466,40 @@ export default function AddMemory() {
           <button
             type="button"
             onClick={() => setPartnerPickerOpen(o => !o)}
-            className="flex items-center gap-2 text-xs text-slate-400 hover:text-violet-400 border border-slate-600 hover:border-violet-500/40 bg-slate-800 px-3 py-2 rounded-xl transition-colors"
+            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: partnerPickerOpen ? '#7b6eb0' : '#7a6048', border: partnerPickerOpen ? '1.5px solid rgba(123,110,176,0.4)' : '1.5px solid #d4c4a8', background: partnerPickerOpen ? 'rgba(123,110,176,0.08)' : '#f0e8d8', padding: '8px 14px', borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Crimson Text', Georgia, serif" }}
           >
-            <Users className="w-3.5 h-3.5" />
+            <IcoUsers size={14} color={partnerPickerOpen ? '#7b6eb0' : '#7a6048'} />
             {partnerPickerOpen ? 'Close partner picker' : 'Choose travel partners'}
           </button>
 
           {partnerPickerOpen && (
-            <div className="mt-3 bg-slate-800/60 border border-slate-700 rounded-2xl p-4 space-y-4">
+            <div style={{ marginTop: 12, background: '#faf6ef', border: '1.5px solid #d4c4a8', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
               {partnerGroups.length > 0 ? partnerGroups.map(group => {
-                const allSelected     = group.members.length > 0 && group.members.every(m => form.partners.includes(m));
-                const someSelected    = !allSelected && group.members.some(m => form.partners.includes(m));
+                const allSelected  = group.members.length > 0 && group.members.every(m => form.partners.includes(m));
+                const someSelected = !allSelected && group.members.some(m => form.partners.includes(m));
                 return (
                   <div key={group.id}>
                     {/* Group header row with Select-All checkbox */}
-                    <div className="flex items-center gap-2 mb-2">
-                      {/* Checkbox */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                       <button
                         type="button"
                         onClick={() => toggleGroup(group)}
-                        className="flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-all"
-                        style={{
-                          background: allSelected ? '#8b5cf6' : someSelected ? '#0e7490' : 'transparent',
-                          borderColor: (allSelected || someSelected) ? '#8b5cf6' : '#475569',
-                        }}
+                        style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${(allSelected || someSelected) ? '#7b6eb0' : '#d4c4a8'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: allSelected ? '#7b6eb0' : someSelected ? 'rgba(123,110,176,0.3)' : 'transparent', transition: 'all 0.15s' }}
                         title={allSelected ? 'Deselect all' : 'Select all'}
                       >
                         {allSelected && <span style={{ color: '#fff', fontSize: 9, fontWeight: 900, lineHeight: 1 }}>✓</span>}
-                        {someSelected && <span style={{ color: '#fff', fontSize: 10, fontWeight: 900, lineHeight: 1 }}>–</span>}
+                        {someSelected && <span style={{ color: '#7b6eb0', fontSize: 10, fontWeight: 900, lineHeight: 1 }}>–</span>}
                       </button>
-                      <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium">
+                      <p style={{ fontSize: 11, color: '#7a6048', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, margin: 0, fontFamily: "'Crimson Text', Georgia, serif" }}>
                         {group.emoji} {group.name}
                       </p>
-                      <span className="text-[10px] text-slate-600 ml-auto">
+                      <span style={{ fontSize: 10, color: '#a89070', marginLeft: 'auto', fontFamily: "'Crimson Text', Georgia, serif" }}>
                         {allSelected ? 'All selected' : someSelected ? `${group.members.filter(m => form.partners.includes(m)).length}/${group.members.length}` : 'Select all'}
                       </span>
                     </div>
 
                     {/* Individual member chips */}
-                    <div className="flex flex-wrap gap-2 pl-6">
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingLeft: 24 }}>
                       {group.members.map(name => {
                         const selected = form.partners.includes(name);
                         return (
@@ -531,11 +507,7 @@ export default function AddMemory() {
                             key={name}
                             type="button"
                             onClick={() => togglePartner(name)}
-                            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                              selected
-                                ? 'bg-violet-500/20 text-violet-400 border-violet-500/40'
-                                : 'bg-slate-700 text-slate-300 border-slate-600 hover:border-slate-500'
-                            }`}
+                            style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: selected ? '1.5px solid rgba(123,110,176,0.45)' : '1.5px solid #d4c4a8', background: selected ? 'rgba(123,110,176,0.12)' : '#f0e8d8', color: selected ? '#7b6eb0' : '#7a6048', cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Crimson Text', Georgia, serif" }}
                           >
                             {selected ? '✓ ' : ''}{name}
                           </button>
@@ -545,31 +517,31 @@ export default function AddMemory() {
                   </div>
                 );
               }) : (
-                <p className="text-slate-500 text-xs italic">
+                <p style={{ color: '#a89070', fontSize: 12, fontStyle: 'italic', margin: 0, fontFamily: "'Crimson Text', Georgia, serif" }}>
                   No saved partners yet. Add people in the Home page, then pick them here.
                 </p>
               )}
 
               {/* Custom / one-off partner */}
-              <div className="pt-2 border-t border-slate-700/60">
-                <p className="text-[11px] text-slate-500 uppercase tracking-wider font-medium mb-2">Add someone else</p>
-                <div className="flex gap-2">
+              <div style={{ paddingTop: 12, borderTop: '1px solid #d4c4a8' }}>
+                <p style={{ fontSize: 10, color: '#a89070', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 8, fontFamily: "'Crimson Text', Georgia, serif" }}>Add someone else</p>
+                <div style={{ display: 'flex', gap: 8 }}>
                   <input
                     type="text"
                     placeholder="Name…"
                     value={customPartnerInput}
                     onChange={e => setCustomPartnerInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomPartner())}
-                    className="input-field flex-1"
-                    style={{ padding: '8px 12px' }}
+                    className="input-field"
+                    style={{ flex: 1, padding: '8px 12px' }}
                   />
                   <button
                     type="button"
                     onClick={addCustomPartner}
                     disabled={!customPartnerInput.trim()}
-                    className="flex items-center gap-1 text-xs bg-violet-500/20 text-violet-400 border border-violet-500/30 px-3 py-2 rounded-xl hover:bg-violet-500/30 disabled:opacity-40 transition-colors"
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, background: 'rgba(123,110,176,0.12)', color: '#7b6eb0', border: '1.5px solid rgba(123,110,176,0.35)', padding: '8px 14px', borderRadius: 10, cursor: customPartnerInput.trim() ? 'pointer' : 'not-allowed', opacity: customPartnerInput.trim() ? 1 : 0.4, transition: 'all 0.15s', fontFamily: "'Crimson Text', Georgia, serif" }}
                   >
-                    <Plus className="w-3.5 h-3.5" /> Add
+                    <IcoPlus size={13} color="#7b6eb0" /> Add
                   </button>
                 </div>
               </div>
@@ -586,15 +558,38 @@ export default function AddMemory() {
           />
         </Field>
 
-        {/* Weather */}
-        <Field label="Weather">
-          <input
-            type="text"
-            placeholder="e.g. Sunny 22°C"
-            value={form.weather}
-            onChange={e => set('weather', e.target.value)}
-            className="input-field"
-          />
+        {/* Season */}
+        <Field label="Season">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[
+              { value: 'Spring', Icon: IcoFlower,    color: '#c4809a' },
+              { value: 'Summer', Icon: IcoSun,       color: '#c4922a' },
+              { value: 'Autumn', Icon: IcoMapleLeaf, color: '#b07040' },
+              { value: 'Winter', Icon: IcoSnowflake, color: '#6b7cb5' },
+            ].map(({ value, Icon, color }) => {
+              const active = form.season === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => set('season', active ? '' : value)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                    border: active ? `2px solid ${color}` : '1.5px solid #d4c4a8',
+                    background: active ? `${color}18` : '#f0e8d8',
+                    color: active ? color : '#a89070',
+                    fontFamily: "'Crimson Text', Georgia, serif",
+                    fontSize: 13, fontWeight: active ? 700 : 500,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <Icon size={18} color={active ? color : '#a89070'} />
+                  {value}
+                </button>
+              );
+            })}
+          </div>
         </Field>
 
         {/* Tags */}
@@ -611,19 +606,19 @@ export default function AddMemory() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-violet-500 hover:bg-violet-400 active:bg-violet-600 text-white font-semibold py-3.5 rounded-2xl transition-colors disabled:opacity-60 text-sm flex items-center justify-center gap-2"
+          style={{ width: '100%', background: saving ? 'rgba(123,110,176,0.5)' : '#7b6eb0', color: '#fff', fontWeight: 700, padding: '13px', borderRadius: 12, border: 'none', fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: saving ? 0.7 : 1, fontFamily: "'Playfair Display', Georgia, serif" }}
         >
           {saving ? (
             <>
-              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
               {uploadStatus || 'Saving…'}
             </>
           ) : (isEdit ? 'Update Memory' : 'Save Memory')}
         </button>
 
         {saving && photos.some(p => p instanceof File) && (
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 text-center">
-            <p className="text-slate-400 text-xs">
+          <div style={{ background: 'rgba(212,196,168,0.3)', border: '1.5px solid #d4c4a8', borderRadius: 14, padding: '10px 14px', textAlign: 'center' }}>
+            <p style={{ color: '#a89070', fontSize: 11, margin: 0 }}>
               Photos are being compressed &amp; processed — please keep this page open.
             </p>
           </div>
@@ -633,17 +628,21 @@ export default function AddMemory() {
       <style>{`
         .input-field {
           width: 100%;
-          background: #1e293b;
-          border: 1px solid #334155;
-          border-radius: 12px;
-          padding: 12px 14px;
-          color: #e2e8f0;
-          font-size: 14px;
+          background: #f0e8d8;
+          border: 1.5px solid #d4c4a8;
+          border-radius: 10px;
+          padding: 10px 12px;
+          color: #2c1a0e;
+          font-size: 13px;
           outline: none;
           transition: border-color 0.15s;
+          font-family: 'Crimson Text', Georgia, serif;
+          box-sizing: border-box;
         }
-        .input-field:focus { border-color: #8b5cf6; }
-        .input-field::placeholder { color: #475569; }
+        .input-field:focus { border-color: #7b6eb0; }
+        .input-field::placeholder { color: #a89070; }
+        .input-field:disabled { opacity: 0.5; }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );
@@ -652,7 +651,7 @@ export default function AddMemory() {
 function Field({ label, children }) {
   return (
     <div>
-      <label className="text-xs text-slate-400 uppercase tracking-wider font-medium block mb-2">{label}</label>
+      <label style={{ display: 'block', fontSize: 10, color: '#a89070', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 7, fontFamily: "'Crimson Text', Georgia, serif" }}>{label}</label>
       {children}
     </div>
   );

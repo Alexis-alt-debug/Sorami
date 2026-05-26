@@ -1,5 +1,5 @@
 ﻿import { useEffect, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { IcoX, IcoChevronLeft, IcoChevronRight } from './VintageIcons';
 
 /**
  * Full-screen photo lightbox.
@@ -55,7 +55,7 @@ export default function PhotoLightbox({ photos, index, onClose, onPrev, onNext, 
           cursor: 'pointer', color: '#fff', zIndex: 10,
         }}
       >
-        <X size={20} />
+        <IcoX size={20} color="#fff" />
       </button>
 
       {/* Counter */}
@@ -99,7 +99,7 @@ export default function PhotoLightbox({ photos, index, onClose, onPrev, onNext, 
               cursor: 'pointer', color: '#fff',
             }}
           >
-            <ChevronLeft size={22} />
+            <IcoChevronLeft size={22} color="#fff" />
           </button>
           <button
             onClick={e => { e.stopPropagation(); onNext(); }}
@@ -111,7 +111,7 @@ export default function PhotoLightbox({ photos, index, onClose, onPrev, onNext, 
               cursor: 'pointer', color: '#fff',
             }}
           >
-            <ChevronRight size={22} />
+            <IcoChevronRight size={22} color="#fff" />
           </button>
         </>
       )}
@@ -133,7 +133,7 @@ export default function PhotoLightbox({ photos, index, onClose, onPrev, onNext, 
               }}
               style={{
                 width: 48, height: 48, padding: 0,
-                border: i === index ? '2px solid #8b5cf6' : '2px solid rgba(255,255,255,0.2)',
+                border: i === index ? '2px solid #7b6eb0' : '2px solid rgba(255,255,255,0.2)',
                 borderRadius: 8, overflow: 'hidden',
                 cursor: 'pointer', flexShrink: 0,
                 opacity: i === index ? 1 : 0.6,

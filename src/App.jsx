@@ -18,8 +18,8 @@ function AppRoutes() {
 
   if (user === undefined) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-900">
-        <div className="w-8 h-8 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+      <div className="flex-1 flex items-center justify-center" style={{ background: '#f0e8d8' }}>
+        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#d4c4a8', borderTopColor: '#7b6eb0' }} />
       </div>
     );
   }
@@ -28,7 +28,7 @@ function AppRoutes() {
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto pb-16">
+      <div className="flex-1 overflow-y-auto pb-16" style={{ background: '#f0e8d8' }}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/map" element={<MapPage />} />

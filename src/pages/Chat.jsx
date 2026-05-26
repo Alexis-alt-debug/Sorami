@@ -1,21 +1,35 @@
 ﻿import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Bot, Sparkles } from 'lucide-react';
+import { IcoArrowLeft, IcoSend, IcoFox, IcoCheck, IcoX, IcoCalendar, IcoCoin, IcoMapPin } from '../components/VintageIcons';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useTravel } from '../context/TravelContext';
-import { getCountryInfo } from '../data/countryNames';
+import { getCountryInfo, COUNTRY_NAMES } from '../data/countryNames';
+import FlagImg from '../components/FlagImg';
+import { formatBudget } from '../components/CurrencyBudgetField';
 
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-// ─── Suggested starter prompts ────────────────────────────────────────────────
-const SUGGESTIONS = [
-  { emoji: '💴', text: "What's the daily budget for Japan?" },
-  { emoji: '🌏', text: 'Best budget destinations in Southeast Asia' },
-  { emoji: '🗺️', text: 'Help me plan a 2-week Europe trip' },
-  { emoji: '🛂', text: 'Visa tips for visiting multiple countries' },
-  { emoji: '🇹🇭', text: 'Thailand vs Vietnam — which is better for first-timers?' },
-  { emoji: '🎒', text: 'What should I pack for a tropical trip?' },
-];
+// ─── createTripPlan tool declaration ─────────────────────────────────────────
+const CREATE_TRIP_PLAN_FN = {
+  name: 'createTripPlan',
+  description: "Save a trip plan to the user's Diary Trip Planner. Use this once you have at minimum a destination and rough dates. Ask for any missing key details first.",
+  parameters: {
+    type: 'OBJECT',
+    properties: {
+      countryName:    { type: 'STRING', description: 'Full English country name e.g. "Japan"' },
+      title:          { type: 'STRING', description: 'Short trip title e.g. "Cherry Blossom Season"' },
+      dateFrom:       { type: 'STRING', description: 'Start date YYYY-MM-DD' },
+      dateTo:         { type: 'STRING', description: 'End date YYYY-MM-DD' },
+      status:         { type: 'STRING', description: 'One of: planning, booked, confirmed' },
+      notes:          { type: 'STRING', description: 'Planning notes: highlights, must-sees, reminders' },
+      budget:         { type: 'NUMBER', description: 'Estimated total budget (number only, no symbols)' },
+      budgetCurrency: { type: 'STRING', description: 'Currency code e.g. USD, EUR, JPY, GBP' },
+      cities:         { type: 'ARRAY', items: { type: 'STRING' }, description: 'Ordered city or region stops' },
+      checklist:      { type: 'ARRAY', items: { type: 'STRING' }, description: 'Practical to-do items before the trip' },
+    },
+    required: ['countryName'],
+  },
+};
 
 // ─── Build system prompt from user's real travel data ─────────────────────────
 function buildSystemPrompt(memories, countryStatuses) {
@@ -42,7 +56,13 @@ Guidelines:
 - Reference the user's past trips to personalise advice (e.g. "Since you've been to Japan, you'll notice Vietnam is…")
 - Use bullet points and short paragraphs — mobile-friendly formatting
 - For itineraries, structure clearly by day or region
-- End responses with a brief follow-up question to keep the conversation going`;
+- End responses with a brief follow-up question to keep the conversation going
+
+Trip Planner:
+- When the user wants to plan or save a trip, gather the essentials through natural conversation: destination, rough travel dates, budget range, interests, and key stops
+- Once you have at minimum the destination and approximate dates, call createTripPlan to save it — don't wait for every detail to be perfect; the user can edit afterwards
+- Always include a practical checklist (book flights, check visa requirements, book accommodation, travel insurance, packing essentials, etc.)
+- Put itinerary highlights and tips in the notes field`;
 }
 
 // ─── Lightweight markdown renderer (bold + line breaks) ──────────────────────
@@ -66,7 +86,7 @@ function RenderText({ text }) {
 
 export default function Chat() {
   const navigate = useNavigate();
-  const { memories, countryStatuses } = useTravel();
+  const { memories, countryStatuses, addTripPlan } = useTravel();
 
   const chatRef  = useRef(null);   // Gemini chat session
   const bottomRef = useRef(null);  // auto-scroll anchor
@@ -75,9 +95,10 @@ export default function Chat() {
     role: 'ai',
     text: "Hi! I'm your Sorami travel assistant 🌍\n\nAsk me anything — trip planning, budget estimates, visa info, destination comparisons, packing tips, you name it. What are you thinking about?",
   }]);
-  const [input,   setInput]   = useState('');
-  const [loading, setLoading] = useState(false);
-  const [noKey,   setNoKey]   = useState(false);
+  const [input,       setInput]       = useState('');
+  const [loading,     setLoading]     = useState(false);
+  const [noKey,       setNoKey]       = useState(false);
+  const [pendingPlan, setPendingPlan] = useState(null); // { msgId } while waiting for confirm/cancel
 
   // ── Init Gemini chat session ────────────────────────────────────────────────
   useEffect(() => {
@@ -90,6 +111,7 @@ export default function Chat() {
       const model = genAI.getGenerativeModel({
         model: 'gemini-2.5-flash',
         systemInstruction: buildSystemPrompt(memories, countryStatuses),
+        tools: [{ functionDeclarations: [CREATE_TRIP_PLAN_FN] }],
       });
       chatRef.current = model.startChat({ history: [] });
     } catch (err) {
@@ -116,8 +138,18 @@ export default function Chat() {
 
     try {
       const result   = await chatRef.current.sendMessage(msg);
-      const response = result.response.text();
-      setMessages(prev => [...prev, { role: 'ai', text: response }]);
+      const response = result.response;
+      const fnCalls  = response.functionCalls?.();
+
+      if (fnCalls?.length > 0 && fnCalls[0].name === 'createTripPlan') {
+        const msgId = Date.now();
+        setMessages(prev => [...prev, {
+          role: 'plan', planData: fnCalls[0].args, status: 'pending', id: msgId,
+        }]);
+        setPendingPlan({ msgId });
+      } else {
+        setMessages(prev => [...prev, { role: 'ai', text: response.text() }]);
+      }
     } catch (err) {
       console.error('Gemini error:', err);
       setMessages(prev => [...prev, {
@@ -130,92 +162,143 @@ export default function Chat() {
     }
   };
 
-  const hasUserMessages = messages.some(m => m.role === 'user');
+  // ── Send Gemini function response and get follow-up text ────────────────────
+  const sendFunctionResponse = async (name, responseObj) => {
+    if (!chatRef.current) return;
+    setLoading(true);
+    try {
+      const result = await chatRef.current.sendMessage([{
+        functionResponse: { name, response: responseObj },
+      }]);
+      setMessages(prev => [...prev, { role: 'ai', text: result.response.text() }]);
+    } catch (err) {
+      console.error('Function response error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Confirm — save plan and tell Gemini it worked ────────────────────────────
+  const handleConfirmPlan = async (planData, msgId) => {
+    // Look up country code + alpha2 from name
+    const entry = Object.entries(COUNTRY_NAMES).find(
+      ([, v]) => v.name.toLowerCase() === (planData.countryName || '').toLowerCase()
+    ) || Object.entries(COUNTRY_NAMES).find(
+      ([, v]) => v.name.toLowerCase().includes((planData.countryName || '').toLowerCase())
+    );
+
+    const tripData = {
+      countryCode:    entry?.[0]               || '',
+      countryName:    planData.countryName      || '',
+      countryAlpha2:  entry?.[1]?.alpha2        || '',
+      title:          planData.title            || '',
+      dateFrom:       planData.dateFrom         || '',
+      dateTo:         planData.dateTo           || '',
+      status:         planData.status           || 'planning',
+      notes:          planData.notes            || '',
+      budget:         planData.budget           || null,
+      budgetCurrency: planData.budgetCurrency   || 'USD',
+      cities:    (planData.cities    || []).map(name => ({ name, dateFrom: '', dateTo: '' })),
+      checklist: (planData.checklist || []).map(text => ({ text, done: false })),
+      photos: [],
+    };
+
+    try {
+      await addTripPlan(tripData);
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? { ...m, status: 'saved' } : m
+      ));
+    } catch (err) {
+      console.error('Failed to save plan:', err);
+    }
+    setPendingPlan(null);
+    await sendFunctionResponse('createTripPlan', { success: true, message: 'Trip plan saved to Diary.' });
+  };
+
+  // ── Cancel — discard plan and tell Gemini ────────────────────────────────────
+  const handleCancelPlan = async (msgId) => {
+    setMessages(prev => prev.map(m =>
+      m.id === msgId ? { ...m, status: 'cancelled' } : m
+    ));
+    setPendingPlan(null);
+    await sendFunctionResponse('createTripPlan', { cancelled: true, message: 'User chose not to save the plan.' });
+  };
+
+  // ── Design tokens ───────────────────────────────────────────────────────────
+  const T = {
+    bg:     '#f0e8d8',
+    card:   '#faf6ef',
+    border: '#d4c4a8',
+    text:   '#2c1a0e',
+    text2:  '#7a6048',
+    text3:  '#a89070',
+    purple: '#7b6eb0',
+    gold:   '#c4922a',
+  };
 
   // ── Layout ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)]">
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', background: T.bg }}>
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-white transition-colors">
-          <ArrowLeft className="w-5 h-5" />
+      {/* ── Header ── */}
+      <div style={{ flexShrink: 0, background: T.card, borderBottom: `2px solid ${T.border}`, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 2px 8px rgba(44,26,14,0.06)' }}>
+        <button onClick={() => navigate(-1)} style={{ color: T.text3, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+          <IcoArrowLeft size={18} color={T.text3} />
         </button>
-
-        <div className="w-8 h-8 rounded-xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center">
-          <Bot className="w-4 h-4 text-violet-400" />
+        <div style={{ width: 32, height: 32, borderRadius: 10, background: `${T.gold}15`, border: `1.5px solid ${T.gold}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <IcoFox size={20} color={T.gold} />
         </div>
-
-        <div className="flex-1">
-          <h1 className="text-white font-bold text-sm leading-tight">Travel Assistant</h1>
-          <p className="text-slate-500 text-[11px]">Powered by Gemini 2.5 Flash</p>
+        <div style={{ flex: 1 }}>
+          <h1 style={{ color: T.text, fontWeight: 700, fontSize: 14, margin: 0, fontFamily: "'Playfair Display', Georgia, serif" }}>Travel Assistant</h1>
+          <p style={{ color: T.text3, fontSize: 10, margin: '1px 0 0' }}>Powered by Gemini 2.5 Flash</p>
         </div>
-
-        {/* Live indicator */}
         {!noKey && (
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-green-400 text-[10px] font-medium">Online</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#5a8a5a', animation: 'pulse 2s infinite' }} />
+            <span style={{ color: '#5a8a5a', fontSize: 10, fontWeight: 600 }}>Online</span>
           </div>
         )}
       </div>
 
-      {/* ── No-key warning banner ───────────────────────────────────────────── */}
+      {/* ── No-key warning banner ── */}
       {noKey && (
-        <div className="flex-shrink-0 mx-4 mt-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4">
-          <p className="text-amber-400 text-sm font-semibold mb-1.5">⚠️ Gemini API key not set</p>
-          <ol className="text-amber-400/80 text-xs leading-relaxed list-decimal list-inside space-y-1">
-            <li>Go to <span className="text-amber-300">aistudio.google.com</span> and sign in</li>
+        <div style={{ flexShrink: 0, margin: '14px 14px 0', background: `${T.gold}12`, border: `1.5px solid ${T.gold}40`, borderRadius: 14, padding: 14 }}>
+          <p style={{ color: T.gold, fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>⚠️ Gemini API key not set</p>
+          <ol style={{ color: T.gold, fontSize: 11, lineHeight: 1.7, margin: 0, paddingLeft: 18, opacity: 0.85 }}>
+            <li>Go to <span style={{ fontWeight: 700 }}>aistudio.google.com</span> and sign in</li>
             <li>Click <strong>Get API key → Create API key</strong></li>
-            <li>Open your <span className="text-amber-300 font-mono">.env</span> file and replace <span className="text-amber-300 font-mono">your_gemini_api_key</span> with it</li>
-            <li>Restart the dev server (<span className="text-amber-300 font-mono">npm run dev</span>)</li>
+            <li>Open your <code>.env</code> file and replace <code>your_gemini_api_key</code> with it</li>
+            <li>Restart the dev server (<code>npm run dev</code>)</li>
           </ol>
         </div>
       )}
 
-      {/* ── Messages ────────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      {/* ── Messages ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-        {/* Suggestion chips — visible only before first user message */}
-        {!hasUserMessages && !noKey && (
-          <div className="mb-1">
-            <p className="text-slate-500 text-[11px] uppercase tracking-wider font-medium mb-2.5 flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3" /> Try asking…
-            </p>
-            <div className="flex flex-col gap-2">
-              {SUGGESTIONS.map(({ emoji, text }) => (
-                <button
-                  key={text}
-                  onClick={() => sendMessage(text)}
-                  className="flex items-center gap-3 bg-slate-800/80 border border-slate-700 text-slate-300 px-4 py-3 rounded-2xl hover:border-violet-500/40 hover:text-violet-300 transition-colors text-left text-sm"
-                >
-                  <span className="text-base flex-shrink-0">{emoji}</span>
-                  {text}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Message list */}
         {messages.map((msg, i) => (
-          <MessageBubble key={i} msg={msg} />
+          msg.role === 'plan'
+            ? <PlanConfirmCard
+                key={i}
+                planData={msg.planData}
+                status={msg.status}
+                msgId={msg.id}
+                T={T}
+                onConfirm={handleConfirmPlan}
+                onCancel={handleCancelPlan}
+              />
+            : <MessageBubble key={i} msg={msg} T={T} />
         ))}
 
-        {/* Typing indicator */}
         {loading && (
-          <div className="flex items-end gap-2">
-            <div className="w-7 h-7 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
-              <Bot className="w-3.5 h-3.5 text-violet-400" />
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${T.gold}15`, border: `1.5px solid ${T.gold}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <IcoFox size={18} color={T.gold} />
             </div>
-            <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-bl-sm px-4 py-3">
-              <div className="flex gap-1.5 items-center h-4">
+            <div style={{ background: T.card, border: `1.5px solid ${T.border}`, borderRadius: '14px 14px 14px 4px', padding: '10px 14px' }}>
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center', height: 14 }}>
                 {[0, 150, 300].map((delay) => (
-                  <span
-                    key={delay}
-                    className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
-                    style={{ animationDelay: `${delay}ms` }}
-                  />
+                  <span key={delay} style={{ width: 6, height: 6, background: T.text3, borderRadius: '50%', animation: 'bounce 1s infinite', animationDelay: `${delay}ms` }} />
                 ))}
               </div>
             </div>
@@ -225,12 +308,9 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* ── Input bar ───────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 bg-slate-900 border-t border-slate-800 px-4 py-3">
-        <form
-          onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
-          className="flex gap-2 items-end"
-        >
+      {/* ── Input bar ── */}
+      <div style={{ flexShrink: 0, background: T.card, borderTop: `2px solid ${T.border}`, padding: '10px 14px' }}>
+        <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -241,49 +321,197 @@ export default function Chat() {
               }
             }}
             placeholder="Ask about destinations, budgets, visas…"
-            disabled={noKey || loading}
+            disabled={noKey || loading || !!pendingPlan}
             rows={1}
-            className="flex-1 bg-slate-800 border border-slate-700 rounded-2xl px-4 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 disabled:opacity-40 leading-relaxed"
-            style={{ resize: 'none', maxHeight: 120 }}
+            style={{
+              flex: 1, background: T.bg, border: `1.5px solid ${T.border}`,
+              borderRadius: 14, padding: '10px 14px', color: T.text, fontSize: 13,
+              outline: 'none', resize: 'none', maxHeight: 120,
+              fontFamily: "'Crimson Text', Georgia, serif", lineHeight: 1.6,
+              opacity: (noKey || loading || !!pendingPlan) ? 0.5 : 1,
+            }}
           />
           <button
             type="submit"
-            disabled={!input.trim() || loading || noKey}
-            className="w-11 h-11 bg-violet-500 hover:bg-violet-400 active:bg-violet-600 disabled:bg-slate-700 disabled:text-slate-600 rounded-2xl flex items-center justify-center transition-colors flex-shrink-0"
+            disabled={!input.trim() || loading || noKey || !!pendingPlan}
+            style={{
+              width: 42, height: 42, background: (!input.trim() || loading || noKey || !!pendingPlan) ? `${T.border}80` : T.purple,
+              border: 'none', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: (!input.trim() || loading || noKey || !!pendingPlan) ? 'not-allowed' : 'pointer',
+              flexShrink: 0, transition: 'background 0.15s',
+            }}
           >
-            <Send className="w-4 h-4 text-white" />
+            <IcoSend size={16} color={(!input.trim() || loading || noKey || !!pendingPlan) ? T.text3 : '#fff'} />
           </button>
         </form>
-        <p className="text-slate-700 text-[10px] text-center mt-2">
-          AI can make mistakes — verify important travel info before booking
-        </p>
+        {pendingPlan ? (
+          <p style={{ color: T.gold, fontSize: 10, textAlign: 'center', margin: '6px 0 0', fontWeight: 600 }}>
+            ↑ Save or discard the trip plan above to continue chatting
+          </p>
+        ) : (
+          <p style={{ color: T.text3, fontSize: 10, textAlign: 'center', margin: '6px 0 0' }}>
+            AI can make mistakes — verify important travel info before booking
+          </p>
+        )}
+      </div>
+
+      <style>{`@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} } @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
+    </div>
+  );
+}
+
+// ─── Plan confirm card ────────────────────────────────────────────────────────
+function PlanConfirmCard({ planData, status, msgId, T, onConfirm, onCancel }) {
+  const isPending   = status === 'pending';
+  const isSaved     = status === 'saved';
+  const isCancelled = status === 'cancelled';
+
+  // Look up alpha2 for flag
+  const entry = Object.entries(COUNTRY_NAMES).find(
+    ([, v]) => v.name.toLowerCase() === (planData.countryName || '').toLowerCase()
+  ) || Object.entries(COUNTRY_NAMES).find(
+    ([, v]) => v.name.toLowerCase().includes((planData.countryName || '').toLowerCase())
+  );
+  const alpha2 = entry?.[1]?.alpha2 || '';
+
+  // Format date range
+  const dateStr = planData.dateFrom
+    ? planData.dateTo
+      ? `${planData.dateFrom} → ${planData.dateTo}`
+      : planData.dateFrom
+    : null;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+      {/* Fox avatar */}
+      <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${T.gold}15`, border: `1.5px solid ${T.gold}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+        <IcoFox size={18} color={T.gold} />
+      </div>
+
+      {/* Card */}
+      <div style={{ flex: 1, background: T.card, border: `1.5px solid ${T.border}`, borderRadius: '14px 14px 14px 4px', overflow: 'hidden', maxWidth: '85%' }}>
+
+        {/* Header */}
+        <div style={{ padding: '10px 14px 9px', borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FlagImg alpha2={alpha2} size={20} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ color: T.text3, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, margin: 0, fontFamily: "'Crimson Text', Georgia, serif" }}>Trip Plan Ready</p>
+            <p style={{ color: T.text, fontSize: 14, fontWeight: 700, margin: '1px 0 0', fontFamily: "'Playfair Display', Georgia, serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {planData.title || planData.countryName}
+            </p>
+            {planData.title && <p style={{ color: T.text3, fontSize: 11, margin: '1px 0 0', fontFamily: "'Crimson Text', Georgia, serif" }}>{planData.countryName}</p>}
+          </div>
+        </div>
+
+        {/* Details */}
+        <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {dateStr && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <IcoCalendar size={11} color={T.text3} />
+              <span style={{ fontSize: 11, color: T.text2, fontFamily: "'Crimson Text', Georgia, serif" }}>{dateStr}</span>
+            </div>
+          )}
+          {planData.cities?.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+              <IcoMapPin size={11} color={T.text3} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span style={{ fontSize: 11, color: T.text2, fontFamily: "'Crimson Text', Georgia, serif" }}>{planData.cities.join(' → ')}</span>
+            </div>
+          )}
+          {planData.budget > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <IcoCoin size={11} color={T.gold} />
+              <span style={{ fontSize: 11, color: T.text2, fontFamily: "'Crimson Text', Georgia, serif" }}>
+                {formatBudget(planData.budget, planData.budgetCurrency || 'USD')}
+              </span>
+            </div>
+          )}
+          {planData.notes && (
+            <p style={{ color: T.text2, fontSize: 11, lineHeight: 1.55, margin: '2px 0 0', fontFamily: "'Crimson Text', Georgia, serif" }}>
+              {planData.notes.length > 130 ? planData.notes.slice(0, 130) + '…' : planData.notes}
+            </p>
+          )}
+          {planData.checklist?.length > 0 && (
+            <div style={{ marginTop: 2 }}>
+              <p style={{ color: T.text3, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, margin: '0 0 4px', fontFamily: "'Crimson Text', Georgia, serif" }}>
+                Checklist ({planData.checklist.length} items)
+              </p>
+              {planData.checklist.slice(0, 3).map((item, i) => (
+                <div key={i} style={{ display: 'flex', gap: 5, alignItems: 'flex-start', marginBottom: 2 }}>
+                  <span style={{ color: T.text3, fontSize: 12, lineHeight: 1.4, flexShrink: 0 }}>◦</span>
+                  <span style={{ color: T.text2, fontSize: 11, fontFamily: "'Crimson Text', Georgia, serif" }}>{item}</span>
+                </div>
+              ))}
+              {planData.checklist.length > 3 && (
+                <p style={{ color: T.text3, fontSize: 10, margin: '2px 0 0', fontStyle: 'italic' }}>+{planData.checklist.length - 3} more…</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        {isPending && (
+          <div style={{ padding: '8px 12px 12px', borderTop: `1px solid ${T.border}`, display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => onConfirm(planData, msgId)}
+              style={{
+                flex: 1, padding: '9px 10px', background: '#7b6eb0', color: '#fff', border: 'none',
+                borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                fontFamily: "'Crimson Text', Georgia, serif",
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+              }}
+            >
+              <IcoCheck size={12} color="#fff" /> Save to Planner
+            </button>
+            <button
+              onClick={() => onCancel(msgId)}
+              style={{
+                padding: '9px 14px', background: '#f0e8d8', color: T.text3,
+                border: `1.5px solid ${T.border}`, borderRadius: 10, fontSize: 12,
+                cursor: 'pointer', fontFamily: "'Crimson Text', Georgia, serif",
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+              }}
+            >
+              <IcoX size={12} color={T.text3} /> Discard
+            </button>
+          </div>
+        )}
+        {isSaved && (
+          <div style={{ padding: '8px 14px 10px', borderTop: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <IcoCheck size={12} color="#5a8a5a" />
+            <span style={{ fontSize: 11, color: '#5a8a5a', fontWeight: 700, fontFamily: "'Crimson Text', Georgia, serif" }}>Saved to Planner</span>
+          </div>
+        )}
+        {isCancelled && (
+          <div style={{ padding: '8px 14px 10px', borderTop: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <IcoX size={12} color={T.text3} />
+            <span style={{ fontSize: 11, color: T.text3, fontStyle: 'italic', fontFamily: "'Crimson Text', Georgia, serif" }}>Discarded</span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
-function MessageBubble({ msg }) {
+function MessageBubble({ msg, T }) {
   const isUser = msg.role === 'user';
 
   return (
-    <div className={`flex items-end gap-2 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-      {/* AI avatar */}
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexDirection: isUser ? 'row-reverse' : 'row' }}>
       {!isUser && (
-        <div className="w-7 h-7 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center flex-shrink-0 mb-0.5">
-          <Bot className="w-3.5 h-3.5 text-violet-400" />
+        <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${T.gold}15`, border: `1.5px solid ${T.gold}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 2 }}>
+          <IcoFox size={18} color={T.gold} />
         </div>
       )}
 
-      <div
-        className={`max-w-[82%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-          isUser
-            ? 'bg-violet-500 text-white rounded-br-sm'
-            : msg.error
-              ? 'bg-red-500/10 border border-red-500/30 text-red-300 rounded-bl-sm'
-              : 'bg-slate-800 border border-slate-700 text-slate-100 rounded-bl-sm'
-        }`}
-      >
+      <div style={{
+        maxWidth: '82%', padding: '10px 14px', fontSize: 13, lineHeight: 1.65,
+        borderRadius: isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+        background: isUser ? T.purple : msg.error ? `${T.rose}15` : T.card,
+        border: isUser ? 'none' : msg.error ? `1.5px solid ${T.rose}40` : `1.5px solid ${T.border}`,
+        color: isUser ? '#fff' : msg.error ? T.rose : T.text2,
+        fontFamily: "'Crimson Text', Georgia, serif",
+      }}>
         <RenderText text={msg.text} />
       </div>
     </div>

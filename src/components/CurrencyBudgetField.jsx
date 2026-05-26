@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 // ── Currency list ─────────────────────────────────────────────────────────────
 export const CURRENCIES = [
@@ -59,15 +59,26 @@ export const CURRENCIES = [
 // Currencies where we show no decimal places
 const NO_DECIMAL = ['JPY', 'KRW', 'VND', 'IDR', 'KHR', 'LAK', 'MMK', 'HUF', 'CLP', 'COP'];
 
+// ── Parchment design tokens ───────────────────────────────────────────────────
+const T = {
+  bg:     '#f0e8d8',
+  card:   '#faf6ef',
+  border: '#d4c4a8',
+  text:   '#2c1a0e',
+  text2:  '#7a6048',
+  text3:  '#a89070',
+  purple: '#7b6eb0',
+  gold:   '#c4922a',
+  navy:   '#6b7cb5',
+  font:   "'Crimson Text', Georgia, serif",
+};
+
 // ── Exported helper — used in display cards ───────────────────────────────────
 export function formatBudget(amount, currency) {
   if (!amount || Number(amount) <= 0) return null;
   const num = Number(amount);
   const curr = CURRENCIES.find(c => c.code === currency);
-  if (!currency || !curr) {
-    // Backward-compat: old records without currency
-    return num.toLocaleString();
-  }
+  if (!currency || !curr) return num.toLocaleString();
   const formatted = NO_DECIMAL.includes(currency)
     ? Math.round(num).toLocaleString()
     : num % 1 === 0
@@ -77,33 +88,18 @@ export function formatBudget(amount, currency) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-/**
- * CurrencyBudgetField
- *
- * Props:
- *   amount:    string   – current amount ("" when empty)
- *   currency:  string   – 3-letter code, e.g. "USD"
- *   onChange:  (amount: string, currency: string) => void
- *   inputBg:   string   – background colour for inputs (default '#1e293b')
- */
-export default function CurrencyBudgetField({
-  amount,
-  currency,
-  onChange,
-  inputBg = '#1e293b',
-}) {
-  // 'main' | 'from' | 'to' | null  →  which picker sheet is open
+export default function CurrencyBudgetField({ amount, currency, onChange }) {
   const [currModal,     setCurrModal]     = useState(null);
   const [currSearch,    setCurrSearch]    = useState('');
   const [showConverter, setShowConverter] = useState(false);
 
   // Converter state
-  const [fromAmt,      setFromAmt]      = useState('');
-  const [fromCurr,     setFromCurr]     = useState(currency === 'USD' ? 'EUR' : 'USD');
-  const [toCurr,       setToCurr]       = useState(currency);
-  const [rates,        setRates]        = useState(null);
-  const [rateLoading,  setRateLoading]  = useState(false);
-  const [rateError,    setRateError]    = useState(false);
+  const [fromAmt,     setFromAmt]     = useState('');
+  const [fromCurr,    setFromCurr]    = useState(currency === 'USD' ? 'EUR' : 'USD');
+  const [toCurr,      setToCurr]      = useState(currency);
+  const [rates,       setRates]       = useState(null);
+  const [rateLoading, setRateLoading] = useState(false);
+  const [rateError,   setRateError]   = useState(false);
 
   // Lock body scroll while modal is open
   useEffect(() => {
@@ -115,7 +111,8 @@ export default function CurrencyBudgetField({
   // Sync toCurr when converter first opens
   useEffect(() => {
     if (showConverter) setToCurr(currency);
-  }, [showConverter]); // intentionally NOT including `currency` to avoid reset mid-conversion
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showConverter]);
 
   // Fetch exchange rates whenever converter is open + fromCurr changes
   useEffect(() => {
@@ -133,7 +130,6 @@ export default function CurrencyBudgetField({
       .finally(() => setRateLoading(false));
   }, [fromCurr, showConverter]);
 
-  // Computed conversion result
   const convertedRaw = useMemo(() => {
     if (!rates || !fromAmt || isNaN(Number(fromAmt)) || Number(fromAmt) <= 0) return null;
     const rate = rates[toCurr];
@@ -148,7 +144,6 @@ export default function CurrencyBudgetField({
       : parseFloat(convertedRaw.toFixed(2)).toLocaleString();
   }, [convertedRaw, toCurr]);
 
-  // Exchange rate label
   const rateInfo = useMemo(() => {
     if (!rates || !rates[toCurr]) return null;
     const r = rates[toCurr];
@@ -158,7 +153,6 @@ export default function CurrencyBudgetField({
     return `1 ${fromCurr} ≈ ${rStr} ${toCurr}`;
   }, [rates, fromCurr, toCurr]);
 
-  // Filtered list for the picker modal
   const filteredCurrencies = useMemo(() => {
     if (!currSearch.trim()) return CURRENCIES;
     const q = currSearch.toLowerCase();
@@ -167,12 +161,10 @@ export default function CurrencyBudgetField({
     );
   }, [currSearch]);
 
-  // Lookup helpers
-  const selectedCurr = CURRENCIES.find(c => c.code === currency)  || { code: currency,  symbol: currency,  name: '' };
-  const fromCurrObj  = CURRENCIES.find(c => c.code === fromCurr)  || { code: fromCurr,  symbol: fromCurr,  name: '' };
-  const toCurrObj    = CURRENCIES.find(c => c.code === toCurr)    || { code: toCurr,    symbol: toCurr,    name: '' };
+  const selectedCurr = CURRENCIES.find(c => c.code === currency) || { code: currency, symbol: currency, name: '' };
+  const fromCurrObj  = CURRENCIES.find(c => c.code === fromCurr) || { code: fromCurr, symbol: fromCurr, name: '' };
+  const toCurrObj    = CURRENCIES.find(c => c.code === toCurr)   || { code: toCurr,   symbol: toCurr,   name: '' };
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
   const handleCurrencySelect = (code) => {
     if (currModal === 'main') onChange(amount, code);
     else if (currModal === 'from') setFromCurr(code);
@@ -190,52 +182,39 @@ export default function CurrencyBudgetField({
     setShowConverter(false);
   };
 
-  // ── Shared styles ────────────────────────────────────────────────────────────
-  const baseInput = {
-    background: inputBg,
-    border: '1px solid #334155',
-    borderRadius: 12,
-    padding: '12px 14px',
-    color: '#e2e8f0',
-    fontSize: 14,
+  // ── Shared style snippets ────────────────────────────────────────────────────
+  const fieldInput = {
+    flex: 1,
+    background: T.bg,
+    border: `1.5px solid ${T.border}`,
+    borderRadius: 10,
+    padding: '10px 12px',
+    color: T.text,
+    fontSize: 13,
     outline: 'none',
-    transition: 'border-color 0.15s',
-    width: '100%',
+    fontFamily: T.font,
     boxSizing: 'border-box',
+    transition: 'border-color 0.15s',
   };
 
-  const currBtn = {
-    background: inputBg,
-    border: '1px solid #334155',
-    borderRadius: 12,
+  const currencyBtn = (active) => ({
+    background: active ? `${T.purple}12` : T.bg,
+    border: `1.5px solid ${active ? T.purple + '50' : T.border}`,
+    borderRadius: 10,
     padding: '0 14px',
-    color: '#e2e8f0',
+    color: active ? T.purple : T.text2,
     fontWeight: 700,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     gap: 5,
-    height: 48,
+    height: 42,
     flexShrink: 0,
     whiteSpace: 'nowrap',
-    transition: 'border-color 0.15s',
-  };
-
-  const smCurrBtn = {
-    ...currBtn,
-    background: '#1e293b',
-    borderRadius: 10,
-    height: 44,
+    fontFamily: T.font,
     fontSize: 13,
-  };
-
-  const smInput = {
-    ...baseInput,
-    background: '#1e293b',
-    borderRadius: 10,
-    padding: '10px 14px',
-    fontSize: 14,
-  };
+    transition: 'all 0.15s',
+  });
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -245,11 +224,11 @@ export default function CurrencyBudgetField({
         <button
           type="button"
           onClick={() => { setCurrModal('main'); setCurrSearch(''); }}
-          style={currBtn}
+          style={currencyBtn(currModal === 'main')}
         >
-          <span style={{ fontSize: 14 }}>{selectedCurr.symbol}</span>
-          <span style={{ fontSize: 13 }}>{selectedCurr.code}</span>
-          <span style={{ fontSize: 9, color: '#64748b' }}>▾</span>
+          <span style={{ fontSize: 13 }}>{selectedCurr.symbol}</span>
+          <span>{selectedCurr.code}</span>
+          <span style={{ fontSize: 9, color: T.text3, marginLeft: 1 }}>▾</span>
         </button>
         <input
           type="number"
@@ -257,11 +236,11 @@ export default function CurrencyBudgetField({
           value={amount}
           onChange={e => onChange(e.target.value, currency)}
           min="0"
-          style={{ flex: 1, ...baseInput }}
+          style={fieldInput}
         />
       </div>
 
-      {/* ── Converter toggle button ── */}
+      {/* ── Converter toggle ── */}
       <button
         type="button"
         onClick={() => setShowConverter(o => !o)}
@@ -272,14 +251,15 @@ export default function CurrencyBudgetField({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 6,
-          background: showConverter ? 'rgba(6,182,212,0.08)' : 'transparent',
-          border: `1px dashed ${showConverter ? 'rgba(6,182,212,0.4)' : '#475569'}`,
+          background: showConverter ? `${T.gold}10` : 'transparent',
+          border: `1.5px dashed ${showConverter ? T.gold + '60' : T.border}`,
           borderRadius: 10,
           padding: '8px 12px',
-          color: showConverter ? '#a78bfa' : '#64748b',
+          color: showConverter ? T.gold : T.text3,
           fontSize: 12,
           cursor: 'pointer',
           transition: 'all 0.15s',
+          fontFamily: T.font,
         }}
       >
         <span>🔄</span>
@@ -290,29 +270,26 @@ export default function CurrencyBudgetField({
       {showConverter && (
         <div style={{
           marginTop: 10,
-          background: '#0f172a',
-          border: '1px solid #334155',
+          background: T.card,
+          border: `1.5px solid ${T.border}`,
           borderRadius: 14,
           padding: 14,
         }}>
-          <p style={{
-            margin: '0 0 14px', fontSize: 11, color: '#94a3b8',
-            textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600,
-          }}>
+          <p style={{ margin: '0 0 12px', fontSize: 10, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, fontFamily: T.font }}>
             Currency Converter
           </p>
 
           {/* FROM */}
-          <p style={{ margin: '0 0 6px', fontSize: 11, color: '#64748b' }}>I have</p>
+          <p style={{ margin: '0 0 6px', fontSize: 11, color: T.text3, fontFamily: T.font }}>I have</p>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <button
               type="button"
               onClick={() => { setCurrModal('from'); setCurrSearch(''); }}
-              style={smCurrBtn}
+              style={currencyBtn(currModal === 'from')}
             >
               <span style={{ fontSize: 12 }}>{fromCurrObj.symbol}</span>
               <span>{fromCurr}</span>
-              <span style={{ fontSize: 9, color: '#64748b' }}>▾</span>
+              <span style={{ fontSize: 9, color: T.text3 }}>▾</span>
             </button>
             <input
               type="number"
@@ -320,66 +297,62 @@ export default function CurrencyBudgetField({
               value={fromAmt}
               onChange={e => setFromAmt(e.target.value)}
               min="0"
-              style={{ flex: 1, ...smInput }}
+              style={fieldInput}
             />
           </div>
 
           {/* Arrow */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div style={{ flex: 1, height: 1, background: '#1e293b' }} />
-            <span style={{ color: '#475569', fontSize: 18 }}>↓</span>
-            <div style={{ flex: 1, height: 1, background: '#1e293b' }} />
+            <div style={{ flex: 1, height: 1, background: T.border }} />
+            <span style={{ color: T.text3, fontSize: 16 }}>↓</span>
+            <div style={{ flex: 1, height: 1, background: T.border }} />
           </div>
 
           {/* TO */}
-          <p style={{ margin: '0 0 6px', fontSize: 11, color: '#64748b' }}>I want to save as</p>
+          <p style={{ margin: '0 0 6px', fontSize: 11, color: T.text3, fontFamily: T.font }}>I want to save as</p>
           <div style={{ display: 'flex', gap: 8, marginBottom: rateInfo ? 8 : 12 }}>
             <button
               type="button"
               onClick={() => { setCurrModal('to'); setCurrSearch(''); }}
-              style={smCurrBtn}
+              style={currencyBtn(currModal === 'to')}
             >
               <span style={{ fontSize: 12 }}>{toCurrObj.symbol}</span>
               <span>{toCurr}</span>
-              <span style={{ fontSize: 9, color: '#64748b' }}>▾</span>
+              <span style={{ fontSize: 9, color: T.text3 }}>▾</span>
             </button>
 
             {/* Result display */}
             <div style={{
               flex: 1,
-              background: '#1e293b',
-              border: `1px solid ${convertedRaw !== null ? 'rgba(6,182,212,0.35)' : '#334155'}`,
+              background: T.bg,
+              border: `1.5px solid ${convertedRaw !== null ? T.gold + '60' : T.border}`,
               borderRadius: 10,
-              padding: '10px 14px',
+              padding: '10px 12px',
               display: 'flex',
               alignItems: 'center',
-              minHeight: 44,
+              minHeight: 42,
               boxSizing: 'border-box',
             }}>
               {rateLoading ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{
-                    width: 12, height: 12, borderRadius: '50%',
-                    border: '2px solid #334155', borderTopColor: '#8b5cf6',
-                    animation: 'cbf-spin 0.7s linear infinite', flexShrink: 0,
-                  }} />
-                  <span style={{ color: '#475569', fontSize: 12 }}>Fetching rates…</span>
+                  <div style={{ width: 11, height: 11, borderRadius: '50%', border: `2px solid ${T.border}`, borderTopColor: T.purple, animation: 'cbf-spin 0.7s linear infinite', flexShrink: 0 }} />
+                  <span style={{ color: T.text3, fontSize: 12, fontFamily: T.font }}>Fetching rates…</span>
                 </div>
               ) : rateError ? (
-                <span style={{ color: '#f87171', fontSize: 12 }}>Rate unavailable</span>
+                <span style={{ color: '#c4809a', fontSize: 12, fontFamily: T.font }}>Rate unavailable</span>
               ) : formattedConverted !== null ? (
-                <span style={{ color: '#a78bfa', fontSize: 15, fontWeight: 700 }}>
+                <span style={{ color: T.gold, fontSize: 15, fontWeight: 700, fontFamily: T.font }}>
                   {toCurrObj.symbol}&thinsp;{formattedConverted}
                 </span>
               ) : (
-                <span style={{ color: '#475569', fontSize: 13 }}>—</span>
+                <span style={{ color: T.text3, fontSize: 13, fontFamily: T.font }}>—</span>
               )}
             </div>
           </div>
 
           {/* Rate label */}
           {rateInfo && (
-            <p style={{ margin: '0 0 12px', fontSize: 11, color: '#475569', textAlign: 'center' }}>
+            <p style={{ margin: '0 0 12px', fontSize: 11, color: T.text3, textAlign: 'center', fontFamily: T.font }}>
               {rateInfo}
             </p>
           )}
@@ -391,15 +364,16 @@ export default function CurrencyBudgetField({
               onClick={handleUseResult}
               style={{
                 width: '100%',
-                padding: '12px',
+                padding: '11px',
                 borderRadius: 10,
-                background: 'rgba(6,182,212,0.12)',
-                border: '1px solid rgba(6,182,212,0.35)',
-                color: '#a78bfa',
+                background: `${T.gold}14`,
+                border: `1.5px solid ${T.gold}50`,
+                color: T.gold,
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.15s',
+                fontFamily: T.font,
               }}
             >
               ✓ &nbsp;Save as {toCurr}&nbsp;{toCurrObj.symbol}{formattedConverted}
@@ -417,7 +391,7 @@ export default function CurrencyBudgetField({
         }}>
           {/* Backdrop */}
           <div
-            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', pointerEvents: 'all' }}
+            style={{ position: 'absolute', inset: 0, background: 'rgba(44,26,14,0.45)', pointerEvents: 'all' }}
             onClick={() => { setCurrModal(null); setCurrSearch(''); }}
           />
 
@@ -426,34 +400,30 @@ export default function CurrencyBudgetField({
             position: 'relative',
             width: '100%',
             maxWidth: 430,
-            background: '#1e293b',
+            background: T.card,
             borderRadius: '20px 20px 0 0',
-            border: '1px solid #334155',
+            border: `1.5px solid ${T.border}`,
             borderBottom: 'none',
             maxHeight: '72vh',
             display: 'flex',
             flexDirection: 'column',
             pointerEvents: 'all',
+            boxShadow: '0 -4px 24px rgba(44,26,14,0.1)',
           }}>
             {/* Drag handle */}
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 6, flexShrink: 0 }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#475569' }} />
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: T.border }} />
             </div>
 
             {/* Header */}
-            <div style={{
-              padding: '0 16px 12px', borderBottom: '1px solid #334155', flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}>
-              <p style={{ margin: 0, color: '#fff', fontWeight: 700, fontSize: 15 }}>
+            <div style={{ padding: '0 16px 12px', borderBottom: `1px solid ${T.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <p style={{ margin: 0, color: T.text, fontWeight: 700, fontSize: 15, fontFamily: "'Playfair Display', Georgia, serif" }}>
                 {currModal === 'main' ? 'Save budget in' : currModal === 'from' ? 'Convert from' : 'Convert to'}
               </p>
               <button
                 onClick={() => { setCurrModal(null); setCurrSearch(''); }}
-                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 2px' }}
-              >
-                ✕
-              </button>
+                style={{ background: 'none', border: 'none', color: T.text3, cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 2px' }}
+              >✕</button>
             </div>
 
             {/* Search */}
@@ -466,14 +436,15 @@ export default function CurrencyBudgetField({
                 autoFocus
                 style={{
                   width: '100%',
-                  background: '#0f172a',
-                  border: '1px solid #334155',
+                  background: T.bg,
+                  border: `1.5px solid ${T.border}`,
                   borderRadius: 10,
-                  padding: '10px 14px',
-                  color: '#e2e8f0',
-                  fontSize: 14,
+                  padding: '10px 12px',
+                  color: T.text,
+                  fontSize: 13,
                   outline: 'none',
                   boxSizing: 'border-box',
+                  fontFamily: T.font,
                 }}
               />
             </div>
@@ -482,7 +453,7 @@ export default function CurrencyBudgetField({
             <div style={{ overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
               {filteredCurrencies.length === 0 ? (
                 <div style={{ padding: 24, textAlign: 'center' }}>
-                  <p style={{ color: '#475569', fontSize: 13, margin: 0 }}>No currencies found</p>
+                  <p style={{ color: T.text3, fontSize: 13, margin: 0, fontFamily: T.font }}>No currencies found</p>
                 </div>
               ) : filteredCurrencies.map((c, i) => {
                 const isSelected =
@@ -498,30 +469,24 @@ export default function CurrencyBudgetField({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 12,
-                      padding: '12px 16px',
-                      background: isSelected ? 'rgba(6,182,212,0.1)' : 'transparent',
+                      padding: '11px 16px',
+                      background: isSelected ? `${T.purple}10` : 'transparent',
                       border: 'none',
-                      borderBottom: i < filteredCurrencies.length - 1 ? '1px solid #1e293b' : 'none',
+                      borderBottom: i < filteredCurrencies.length - 1 ? `1px solid ${T.border}40` : 'none',
                       cursor: 'pointer',
                       textAlign: 'left',
+                      transition: 'background 0.1s',
                     }}
                   >
-                    <span style={{
-                      color: isSelected ? '#a78bfa' : '#94a3b8',
-                      fontSize: 13, fontWeight: 700,
-                      width: 40, flexShrink: 0,
-                    }}>
+                    <span style={{ color: isSelected ? T.purple : T.text2, fontSize: 13, fontWeight: 700, width: 40, flexShrink: 0, fontFamily: T.font }}>
                       {c.code}
                     </span>
-                    <span style={{ color: '#cbd5e1', fontSize: 13, flex: 1 }}>{c.name}</span>
-                    <span style={{
-                      color: isSelected ? '#a78bfa' : '#475569',
-                      fontSize: 13, fontWeight: 600, flexShrink: 0,
-                    }}>
+                    <span style={{ color: T.text2, fontSize: 13, flex: 1, fontFamily: T.font }}>{c.name}</span>
+                    <span style={{ color: isSelected ? T.purple : T.text3, fontSize: 13, fontWeight: 600, flexShrink: 0, fontFamily: T.font }}>
                       {c.symbol}
                     </span>
                     {isSelected && (
-                      <span style={{ color: '#a78bfa', fontSize: 14, flexShrink: 0 }}>✓</span>
+                      <span style={{ color: T.purple, fontSize: 13, flexShrink: 0 }}>✓</span>
                     )}
                   </button>
                 );
@@ -531,7 +496,6 @@ export default function CurrencyBudgetField({
         </div>
       )}
 
-      {/* Spinner keyframe (scoped name to avoid conflicts) */}
       <style>{`@keyframes cbf-spin { to { transform: rotate(360deg); } }`}</style>
     </>
   );
